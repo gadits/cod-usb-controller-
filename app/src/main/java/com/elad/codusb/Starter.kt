@@ -20,6 +20,10 @@ object Starter {
     private const val VIRTUAL_VID = 0x0929
     private const val VIRTUAL_PID = 0x1a85
     private const val PROC = "codusb_hid"
+    private const val PID_FILE = "/data/local/tmp/codusb_hid.pid"
+    /** Kills the helper by its saved pid, then by name as a fallback. */
+    private const val KILL_HELPER =
+        "if [ -f $PID_FILE ]; then kill \$(cat $PID_FILE) 2>/dev/null; rm -f $PID_FILE; fi; pkill $PROC 2>/dev/null"
     private const val LOCALHOST = "127.0.0.1"
 
     fun prefs(ctx: Context): SharedPreferences =
@@ -168,7 +172,7 @@ object Starter {
         val apk = ctx.applicationInfo.sourceDir
         shell(
             m,
-            "pkill $PROC; CLASSPATH='$apk' nohup app_process /system/bin --nice-name=$PROC " +
+            "$KILL_HELPER; CLASSPATH='$apk' nohup app_process /system/bin --nice-name=$PROC " +
                 "com.elad.codusb.HidServer </dev/null >/dev/null 2>&1 &"
         )
         repeat(16) {
@@ -184,7 +188,7 @@ object Starter {
     }
 
     fun stopHelper(m: AdbManager) {
-        shell(m, "pkill $PROC")
+        shell(m, "$KILL_HELPER; true")
     }
 
     /** Called right after a successful pairing. */
@@ -234,8 +238,14 @@ object Starter {
         val m = connect(ctx, 20_000) ?: return "לא הצלחתי להתחבר כדי לכבות. ודא ש'ניפוי באגים אלחוטי' דולק."
         return try {
             stopHelper(m)
-            Thread.sleep(800)
-            if (isVirtualPresent(ctx)) "הכיבוי נכשל." else "השלט הווירטואלי כובה."
+            var gone = false
+            repeat(10) {
+                if (!gone) {
+                    Thread.sleep(300)
+                    gone = !isVirtualPresent(ctx)
+                }
+            }
+            if (gone) "השלט הווירטואלי כובה." else "הכיבוי נכשל."
         } catch (t: Throwable) {
             "שגיאה: ${t.message}"
         }

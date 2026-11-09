@@ -50,15 +50,38 @@ shot_n = [0]
 
 
 def shot(name):
+    dismiss_system_dialogs()
     shot_n[0] += 1
     fn = f"{OUT}/{shot_n[0]:02d}_{name}.png"
     run(f"adb exec-out screencap -p > {fn}")
     log("screenshot", fn)
 
 
-def dump():
+def raw_dump():
     run("adb shell uiautomator dump /sdcard/ui.xml", 30)
     return run("adb shell cat /sdcard/ui.xml", 30)
+
+
+def dismiss_system_dialogs(xml=None):
+    """Emulator hiccups: tap 'Wait' on any 'isn't responding' dialog. Returns True if one was closed."""
+    xml = xml if xml is not None else raw_dump()
+    if "isn't responding" in xml or "Wait" in xml and "Close app" in xml:
+        for n in nodes(xml):
+            if n["text"] == "Wait":
+                log("dismissing ANR dialog")
+                tap(n["cx"], n["cy"])
+                time.sleep(1.5)
+                return True
+    return False
+
+
+def dump():
+    xml = raw_dump()
+    for _ in range(3):
+        if not dismiss_system_dialogs(xml):
+            break
+        xml = raw_dump()
+    return xml
 
 
 def nodes(xml):
@@ -157,6 +180,7 @@ def wait_for(fn, timeout, step=0.25):
 def launch_app():
     run(f"adb shell am start -W -n {PKG}/.MainActivity", 60)
     time.sleep(2.5)
+    dismiss_system_dialogs()
 
 
 def read_pairing_code():
@@ -180,7 +204,11 @@ def main():
     run("adb shell settings put global development_settings_enabled 1")
     run("adb shell svc wifi enable")
     run("adb shell input keyevent 82")  # unlock
-    time.sleep(3)
+    # let the freshly booted emulator settle, and clear any "not responding" dialogs
+    time.sleep(25)
+    for _ in range(4):
+        dismiss_system_dialogs()
+        time.sleep(2)
     log("wifi:", run("adb shell dumpsys wifi | grep -m1 'mNetworkInfo'"))
 
     # ---------- 1. helper ----------
@@ -202,9 +230,9 @@ def main():
     shot("main_scrolled_2")
     scroll_down()
     shot("main_scrolled_3")
-    run("adb shell pkill codusb_hid")
-    time.sleep(1)
-    result("helper_stops_with_pkill", not virtual_present())
+    run("adb shell 'kill $(cat /data/local/tmp/codusb_hid.pid)'")
+    gone, _ = wait_for(lambda: not virtual_present(), 5, 0.3)
+    result("helper_stops_by_pid", bool(gone))
     run(f"adb shell am force-stop {PKG}")
     launch_app()
     shot("main_inactive")
@@ -341,6 +369,7 @@ finally:
 
 required = [
     "hid_helper_creates_controller",
+    "helper_stops_by_pid",
     "code_box_appears",
     "code_box_expands_by_itself",
     "pairing_creates_controller",

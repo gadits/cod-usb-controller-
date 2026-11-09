@@ -48,12 +48,25 @@ public final class HidServer {
             log = new PrintStream(new FileOutputStream("/data/local/tmp/codusb_hid.log", false), true);
         } catch (Throwable ignored) {
         }
+        writePid();
         try {
             run();
         } catch (Throwable t) {
             log.println("fatal: " + t);
             t.printStackTrace(log);
             System.exit(1);
+        }
+    }
+
+    /** Lets the app stop exactly this process later (the process name is not reliable for pkill). */
+    private static void writePid() {
+        try {
+            String pid = new java.io.File("/proc/self").getCanonicalFile().getName();
+            FileOutputStream f = new FileOutputStream("/data/local/tmp/codusb_hid.pid", false);
+            f.write(pid.getBytes(StandardCharsets.US_ASCII));
+            f.close();
+        } catch (Throwable t) {
+            log.println("pid file: " + t);
         }
     }
 
