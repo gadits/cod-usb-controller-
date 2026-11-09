@@ -230,6 +230,7 @@ def read_pairing_code():
 def main():
     # ---------- setup ----------
     run("adb wait-for-device", 120)
+    run("adb logcat -G 16M")
     log(run(f"adb install -r -g {APK}", 180))
     run(f"adb shell appops set {PKG} SYSTEM_ALERT_WINDOW allow")
     run("adb shell settings put global development_settings_enabled 1")
@@ -358,7 +359,18 @@ def main():
     time.sleep(1)
     result("dialog_still_open_after_typing", "Pair with device" in raw_dump() or True)
 
-    ok, dt = wait_for(virtual_present, 90, 1.0)
+    t_code = time.time()
+    ok = False
+    while time.time() - t_code < 90:
+        ps = run("adb shell 'ps -A -o PID,NAME,ARGS | grep -i -e codusb -e app_process | grep -v grep'")
+        present = virtual_present()
+        log(f"t+{time.time() - t_code:5.1f}s present={present} ps={ps.strip()!r}")
+        if present:
+            ok = True
+            break
+        time.sleep(1)
+    dt = time.time() - t_code
+    log("helper log after pairing:", run("adb shell cat /data/local/tmp/codusb_hid.log"))
     result("pairing_creates_controller", bool(ok))
     result("seconds_from_code_to_controller", round(dt, 1))
     run("adb shell cmd statusbar collapse")
@@ -396,7 +408,7 @@ except Exception as e:  # keep results even on a crash
     log("EXCEPTION", repr(e))
     result("test_crashed", repr(e))
 finally:
-    run(f"adb logcat -d -t 3000 > {OUT}/logcat.txt", 60)
+    run(f"adb logcat -d -b main,system,crash > {OUT}/logcat.txt", 120)
     with open(f"{OUT}/results.json", "w") as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
     with open(f"{OUT}/test_log.txt", "w") as f:

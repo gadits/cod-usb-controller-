@@ -189,10 +189,17 @@ object Starter {
             if (isVirtualPresent(ctx)) return true
             Thread.sleep(500)
         }
+        // diagnostics: is the helper process alive, and does the system see the device?
         try {
-            val err = shell(m, "cat /data/local/tmp/codusb_hid.log 2>&1 | tail -5")
-            if (err.isNotEmpty()) log(ctx, "helper: $err")
-        } catch (_: Throwable) {
+            val diag = shell(
+                m,
+                "echo pid=\$(cat $PID_FILE 2>/dev/null); ps -A -o PID,NAME | grep -i codusb; " +
+                    "echo inputs=\$(dumpsys input | grep -c 'Xbox Wireless Controller'); " +
+                    "tail -5 /data/local/tmp/codusb_hid.log"
+            )
+            log(ctx, "אבחון: $diag")
+        } catch (t: Throwable) {
+            log(ctx, "אבחון נכשל: ${t.message}")
         }
         return false
     }
