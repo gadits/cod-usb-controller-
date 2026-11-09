@@ -62,6 +62,33 @@ object Starter {
         }.distinct()
     }
 
+    fun isXiaomi(): Boolean {
+        val m = (android.os.Build.MANUFACTURER + " " + android.os.Build.BRAND).lowercase(Locale.US)
+        return m.contains("xiaomi") || m.contains("redmi") || m.contains("poco")
+    }
+
+    fun isBatteryUnrestricted(ctx: Context): Boolean =
+        ctx.getSystemService(android.os.PowerManager::class.java).isIgnoringBatteryOptimizations(ctx.packageName)
+
+    /** MIUI/HyperOS stores "Autostart" as hidden AppOp 10008. Null if it can't be read. */
+    fun miuiAutostartAllowed(ctx: Context): Boolean? {
+        if (!isXiaomi()) return null
+        return try {
+            val ops = ctx.getSystemService(android.app.AppOpsManager::class.java)
+            val method = android.app.AppOpsManager::class.java.getMethod(
+                "checkOpNoThrow",
+                Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, String::class.java
+            )
+            val mode = method.invoke(ops, 10008, android.os.Process.myUid(), ctx.packageName) as Int
+            mode == android.app.AppOpsManager.MODE_ALLOWED
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    fun autostartOk(ctx: Context): Boolean =
+        miuiAutostartAllowed(ctx) ?: prefs(ctx).getBoolean("autostart_visited", false)
+
     fun isWifiConnected(ctx: Context): Boolean {
         val cm = ctx.getSystemService(ConnectivityManager::class.java)
         return cm.allNetworks.any { n ->
@@ -107,8 +134,20 @@ object Starter {
 
     fun shell(m: AdbManager, cmd: String): String {
         val stream = m.openStream("shell:$cmd")
+        val out = java.io.ByteArrayOutputStream()
         return try {
-            stream.openInputStream().readBytes().toString(Charsets.UTF_8).trim()
+            val input = stream.openInputStream()
+            val buf = ByteArray(4096)
+            try {
+                while (true) {
+                    val n = input.read(buf)
+                    if (n < 0) break
+                    out.write(buf, 0, n)
+                }
+            } catch (_: java.io.IOException) {
+                // libadb reports "Stream closed" when the command ends: that is the normal end of output
+            }
+            out.toString(Charsets.UTF_8.name()).trim()
         } finally {
             try {
                 stream.close()

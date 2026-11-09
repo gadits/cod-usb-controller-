@@ -27,6 +27,9 @@ class PairingService : Service() {
     private var mdns: AdbMdns? = null
     private val handler = Handler(Looper.getMainLooper())
     private val nm by lazy { getSystemService(NotificationManager::class.java) }
+    private val overlay by lazy {
+        CodeOverlay(this, onCode = { code -> if (!busy) thread { pair(code) } }, onCancel = { finish(null) })
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -59,6 +62,7 @@ class PairingService : Service() {
             if (port != pairingPort && !busy) {
                 pairingPort = port
                 nm.notify(Notif.ID_PAIR, inputNotification("נמצא! הקלד כאן את קוד הצימוד בן 6 הספרות:"))
+                overlay.show("הקלד את 6 הספרות שמופיעות בחלון של ההגדרות:")
             }
         }.also { it.start() }
         handler.removeCallbacksAndMessages(null)
@@ -95,10 +99,12 @@ class PairingService : Service() {
     private fun pair(code: String) {
         if (code.length != 6 || pairingPort <= 0) {
             nm.notify(Notif.ID_PAIR, inputNotification("הקוד צריך להיות 6 ספרות. נסה שוב:"))
+            overlay.setMessage("הקוד צריך להיות 6 ספרות", true)
             return
         }
         busy = true
         nm.notify(Notif.ID_PAIR, Notif.simple(this, Notif.CH_PAIR, "מצמד...", true))
+        overlay.setMessage("מצמד...", false)
         val ok = try {
             AdbManager.get(this).pair("127.0.0.1", pairingPort, code)
         } catch (t: Throwable) {
@@ -111,11 +117,13 @@ class PairingService : Service() {
                 Notif.ID_PAIR,
                 inputNotification("הצימוד נכשל (קוד שגוי או שפג תוקפו). פתח קוד חדש והקלד אותו כאן:")
             )
+            overlay.setMessage("קוד שגוי או שפג תוקפו. נסה שוב:", true)
             return
         }
         Starter.setPaired(this, true)
         Starter.log(this, "הצימוד הצליח")
         mdns?.stop()
+        overlay.hide()
         val result = Starter.afterPairing(this) { msg ->
             nm.notify(Notif.ID_PAIR, Notif.simple(this, Notif.CH_PAIR, msg, true))
         }
@@ -125,6 +133,7 @@ class PairingService : Service() {
 
     private fun finish(message: String?) {
         handler.removeCallbacksAndMessages(null)
+        overlay.hide()
         mdns?.stop()
         mdns = null
         busy = false
@@ -134,6 +143,7 @@ class PairingService : Service() {
     }
 
     override fun onDestroy() {
+        overlay.hide()
         mdns?.stop()
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()

@@ -2,6 +2,7 @@ package com.elad.codusb
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
@@ -17,12 +18,9 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.os.PowerManager
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
-import android.widget.Button
-import android.widget.CheckBox
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -30,99 +28,40 @@ import android.widget.Toast
 
 class MainActivity : Activity() {
 
-    private lateinit var statusText: TextView
-    private lateinit var padsText: TextView
-    private lateinit var setupText: TextView
-    private lateinit var logText: TextView
-    private lateinit var pairButton: Button
-    private lateinit var devButton: Button
+    private lateinit var scroll: ScrollView
+    private lateinit var content: LinearLayout
     private val handler = Handler(Looper.getMainLooper())
 
     private val doneReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) = refresh()
+        override fun onReceive(context: Context?, intent: Intent?) = render()
     }
 
     private val deviceListener = object : InputManager.InputDeviceListener {
-        override fun onInputDeviceAdded(deviceId: Int) = refresh()
-        override fun onInputDeviceRemoved(deviceId: Int) = refresh()
-        override fun onInputDeviceChanged(deviceId: Int) = refresh()
+        override fun onInputDeviceAdded(deviceId: Int) = render()
+        override fun onInputDeviceRemoved(deviceId: Int) = render()
+        override fun onInputDeviceChanged(deviceId: Int) {}
     }
 
-    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+    private fun dp(v: Int) = Retro.dp(this, v)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.statusBarColor = Retro.FACE
+        window.navigationBarColor = Retro.BODY
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_RTL
 
-        val root = LinearLayout(this).apply {
+        content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(24), dp(16), dp(24))
-            setBackgroundColor(Color.parseColor("#F4F6F4"))
+            setPadding(dp(16), dp(16), dp(16), dp(28))
         }
-
-        root.addView(TextView(this).apply {
-            text = "שלט USB ל-Call of Duty Mobile"
-            textSize = 22f
-            setTypeface(typeface, Typeface.BOLD)
-            setTextColor(Color.parseColor("#1B5E20"))
-        })
-
-        // Status
-        val statusCard = card(root)
-        statusText = TextView(this).apply { textSize = 18f; setTypeface(typeface, Typeface.BOLD) }
-        padsText = TextView(this).apply { textSize = 14f; setPadding(0, dp(6), 0, dp(6)) }
-        statusCard.addView(statusText)
-        statusCard.addView(padsText)
-        statusCard.addView(button("▶  הפעל עכשיו", "#2E7D32") {
-            startForegroundService(Intent(this, StartService::class.java))
-            toast("מפעיל... התוצאה תופיע בהתראה")
-        })
-        statusCard.addView(button("■  כבה", "#757575") {
-            startForegroundService(Intent(this, StartService::class.java).setAction(StartService.ACTION_STOP))
-            toast("מכבה...")
-        })
-        statusCard.addView(CheckBox(this).apply {
-            text = "הפעלה אוטומטית כשהמכשיר נדלק"
-            isChecked = Starter.autoStart(this@MainActivity)
-            setOnCheckedChangeListener { _, c -> Starter.setAutoStart(this@MainActivity, c) }
-        })
-
-        // One-time setup
-        val setupCard = card(root)
-        setupCard.addView(title("הגדרה חד-פעמית"))
-        setupText = TextView(this).apply { textSize = 14f; setPadding(0, dp(4), 0, dp(4)) }
-        setupCard.addView(setupText)
-        devButton = button("1. פתח 'מידע על הטלפון'", "#1565C0") {
-            open(Intent(Settings.ACTION_DEVICE_INFO_SETTINGS))
-            toast("לחץ 7 פעמים על 'גרסת MIUI/HyperOS' או 'מספר Build'")
+        scroll = ScrollView(this).apply {
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Retro.BODY_LIGHT, Retro.BODY, Color.parseColor("#B8B8B8"))
+            )
+            addView(content)
         }
-        setupCard.addView(devButton)
-        pairButton = button("2. התחל צימוד", "#1565C0") { startPairing() }
-        setupCard.addView(pairButton)
-
-        // Xiaomi / battery
-        val sysCard = card(root)
-        sysCard.addView(title("כדי שזה יעבוד גם אחרי הדלקה"))
-        sysCard.addView(TextView(this).apply {
-            textSize = 14f
-            text = "• בשיאומי: אפשר 'הפעלה אוטומטית' לאפליקציה.\n" +
-                "• בכל מכשיר: בטל הגבלת סוללה לאפליקציה.\n" +
-                "• צריך להיות מחובר ל-WiFi בזמן ההפעלה."
-        })
-        sysCard.addView(button("הרשאת הפעלה אוטומטית (שיאומי)", "#EF6C00") { openXiaomiAutostart() })
-        sysCard.addView(button("בטל הגבלת סוללה", "#EF6C00") { requestBatteryExemption() })
-
-        // Log
-        val logCard = card(root)
-        logCard.addView(title("יומן"))
-        logText = TextView(this).apply {
-            textSize = 12f
-            typeface = Typeface.MONOSPACE
-            textDirection = View.TEXT_DIRECTION_RTL
-        }
-        logCard.addView(logText)
-
-        setContentView(ScrollView(this).apply { addView(root) })
+        setContentView(scroll)
 
         if (Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -135,7 +74,7 @@ class MainActivity : Activity() {
         super.onResume()
         registerReceiver(doneReceiver, IntentFilter(StartService.ACTION_DONE), Context.RECEIVER_NOT_EXPORTED)
         getSystemService(InputManager::class.java).registerInputDeviceListener(deviceListener, handler)
-        refresh()
+        render()
     }
 
     override fun onPause() {
@@ -147,35 +86,191 @@ class MainActivity : Activity() {
         getSystemService(InputManager::class.java).unregisterInputDeviceListener(deviceListener)
     }
 
-    private fun refresh() {
-        val active = Starter.isVirtualPresent(this)
-        statusText.text = if (active) "● השלט הווירטואלי פעיל" else "● השלט הווירטואלי כבוי"
-        statusText.setTextColor(Color.parseColor(if (active) "#2E7D32" else "#C62828"))
-        val pads = Starter.realGamepads(this)
-        padsText.text = if (pads.isEmpty()) "לא זוהה שלט מחובר כרגע."
-        else "שלטים מחוברים: " + pads.joinToString(", ")
+    // ---------- UI ----------
 
+    private fun render() {
+        val y = scroll.scrollY
+        content.removeAllViews()
+        content.addView(header())
+        content.addView(statusPanel(), gap())
+        content.addView(setupPanel(), gap())
+        content.addView(bootPanel(), gap())
+        content.addView(logPanel(), gap())
+        scroll.post { scroll.scrollTo(0, y) }
+    }
+
+    private fun gap() = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) }
+
+    private fun header(): View {
+        val logo = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            background = Retro.rounded(Retro.FACE, Retro.dpf(this@MainActivity, 14f), Retro.FACE_EDGE, dp(2))
+            setPadding(dp(16), dp(16), dp(16), dp(14))
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+            addView(TextView(this@MainActivity).apply {
+                text = "COD USB"
+                textSize = 26f
+                typeface = Retro.pixel(this@MainActivity)
+                setTextColor(Retro.RED_TEXT)
+                setShadowLayer(0.01f, dp(3).toFloat(), dp(3).toFloat(), Retro.RED_DARK)
+                gravity = Gravity.CENTER
+            })
+            addView(TextView(this@MainActivity).apply {
+                text = "CONTROLLER"
+                textSize = 11f
+                letterSpacing = 0.3f
+                typeface = Retro.pixel(this@MainActivity)
+                setTextColor(Retro.STRIPE_LIGHT)
+                gravity = Gravity.CENTER
+                setPadding(0, dp(10), 0, 0)
+            })
+        }
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(logo)
+            addView(TextView(this@MainActivity).apply {
+                text = "כל שלט USB ב-Call of Duty Mobile"
+                textSize = 14f
+                setTypeface(Typeface.DEFAULT, Typeface.BOLD)
+                setTextColor(Color.parseColor("#4A4A4A"))
+                gravity = Gravity.CENTER
+                setPadding(0, dp(8), 0, 0)
+            })
+        }
+    }
+
+    private fun statusPanel(): View {
+        val active = Starter.isVirtualPresent(this)
+        val pads = Starter.realGamepads(this)
+        val panel = Retro.faceplate(this, null)
+        panel.addView(Retro.stripes(this))
+        panel.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(14), 0, dp(2))
+            addView(Retro.led(this@MainActivity, active).apply {
+                layoutParams = LinearLayout.LayoutParams(dp(18), dp(18)).apply { marginEnd = dp(12) }
+            })
+            addView(TextView(this@MainActivity).apply {
+                text = if (active) "השלט הווירטואלי פעיל" else "השלט הווירטואלי כבוי"
+                textSize = 20f
+                setTypeface(Typeface.DEFAULT, Typeface.BOLD)
+                setTextColor(if (active) Retro.LED_GREEN else Retro.TEXT_LIGHT)
+            })
+        })
+        panel.addView(TextView(this).apply {
+            text = if (pads.isEmpty()) "לא זוהה שלט מחובר כרגע" else "🎮 " + pads.joinToString(" · ")
+            textSize = 14f
+            setTextColor(Retro.TEXT_DIM)
+            setPadding(dp(30), dp(2), 0, dp(14))
+        })
+
+        // A (start) on the right, B (stop) on the left — like the real controller
+        panel.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            addView(Retro.roundButton(this@MainActivity, "A", "הפעל") {
+                startForegroundService(Intent(this@MainActivity, StartService::class.java))
+                toast("מפעיל... התוצאה תופיע בהתראה")
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(Retro.roundButton(this@MainActivity, "B", "כבה") {
+                startForegroundService(
+                    Intent(this@MainActivity, StartService::class.java).setAction(StartService.ACTION_STOP)
+                )
+                toast("מכבה...")
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+        })
+
+        val auto = Starter.autoStart(this)
+        panel.addView(Retro.pill(this, if (auto) "✓  הפעלה אוטומטית בהדלקה: פועל" else "הפעלה אוטומטית בהדלקה: כבוי", auto) {
+            Starter.setAutoStart(this, !auto)
+            render()
+        }.apply { (layoutParams as LinearLayout.LayoutParams).topMargin = dp(18) })
+        return panel
+    }
+
+    private fun setupPanel(): View {
         val devOn = Settings.Global.getInt(contentResolver, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) == 1
         val paired = Starter.isPaired(this)
         val wss = Starter.hasSecureSettings(this)
-        setupText.text = buildString {
-            append(if (devOn) "✓ אפשרויות מפתח פעילות\n" else "✗ אפשרויות מפתח כבויות – שלב 1\n")
-            append(if (paired) "✓ צימוד בוצע\n" else "✗ עוד לא בוצע צימוד – שלב 2\n")
-            append(
-                if (wss) "✓ הפעלה אוטומטית אחרי הדלקה מאושרת"
-                else "✗ הפעלה אוטומטית אחרי הדלקה עוד לא מאושרת (מתבצע בזמן הצימוד)"
+        val overlay = Settings.canDrawOverlays(this)
+
+        val panel = Retro.faceplate(this, "הגדרה חד-פעמית")
+        panel.addView(Retro.ledRow(this, devOn, if (devOn) "אפשרויות מפתח פעילות" else "אפשרויות מפתח כבויות"))
+        panel.addView(Retro.ledRow(this, paired, if (paired) "צימוד בוצע" else "עוד לא בוצע צימוד"))
+        panel.addView(
+            Retro.ledRow(
+                this, wss,
+                if (wss) "הפעלה אחרי הדלקה מאושרת" else "הפעלה אחרי הדלקה עוד לא מאושרת"
             )
-            if (!paired) {
-                append(
-                    "\n\nשלב 2: לחץ 'התחל צימוד'. ייפתחו אפשרויות מפתח. הדלק 'ניפוי באגים אלחוטי', " +
-                        "היכנס אליו ובחר 'צימוד מכשיר באמצעות קוד צימוד'. " +
-                        "הקלד את הקוד בהתראה שתופיע למעלה (משוך את ההתראה למטה)."
-                )
-            }
+        )
+        if (!paired) {
+            panel.addView(TextView(this).apply {
+                text = "לחץ 'התחל צימוד'. באפשרויות מפתח הדלק 'ניפוי באגים אלחוטי', היכנס אליו ובחר " +
+                    "'צימוד מכשיר באמצעות קוד צימוד'. תיבה גדולה תופיע למעלה – הקלד בה את הקוד."
+                textSize = 14f
+                setTextColor(Retro.TEXT_DIM)
+                setPadding(0, dp(8), 0, 0)
+            })
         }
-        devButton.visibility = if (devOn) View.GONE else View.VISIBLE
-        pairButton.text = if (paired) "צמד מחדש" else "2. התחל צימוד"
-        logText.text = Starter.readLog(this).ifEmpty { "—" }
+        if (!devOn) {
+            panel.addView(Retro.pill(this, "1. פתח 'מידע על הטלפון'") {
+                open(Intent(Settings.ACTION_DEVICE_INFO_SETTINGS))
+                toast("לחץ 7 פעמים על 'גרסת MIUI/HyperOS' או 'מספר Build'")
+            })
+        }
+        panel.addView(Retro.pill(this, if (overlay) "✓  חלון קוד מעל ההגדרות: מאושר" else "אשר הצגת חלון הקוד מעל ההגדרות", overlay) {
+            if (!overlay) requestOverlay()
+        })
+        panel.addView(Retro.pill(this, if (paired) "✓  צומד – לחץ לצימוד מחדש" else "התחל צימוד", paired) {
+            startPairing()
+        })
+        return panel
+    }
+
+    private fun bootPanel(): View {
+        val battery = Starter.isBatteryUnrestricted(this)
+        val panel = Retro.faceplate(this, "כדי שזה יעלה לבד אחרי הדלקה")
+        if (Starter.isXiaomi()) {
+            val auto = Starter.autostartOk(this)
+            panel.addView(Retro.pill(this, if (auto) "✓  הפעלה אוטומטית: מאושרת" else "אשר הפעלה אוטומטית", auto) {
+                openXiaomiAutostart()
+            })
+        }
+        panel.addView(Retro.pill(this, if (battery) "✓  הגבלת סוללה: מבוטלת" else "בטל הגבלת סוללה", battery) {
+            if (!battery) {
+                open(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
+            } else toast("כבר מבוטל ✓")
+        })
+        panel.addView(TextView(this).apply {
+            text = "צריך להיות מחובר ל-WiFi בזמן ההפעלה."
+            textSize = 13f
+            setTextColor(Retro.TEXT_DIM)
+            setPadding(0, dp(10), 0, 0)
+        })
+        return panel
+    }
+
+    private fun logPanel(): View {
+        val panel = Retro.faceplate(this, "יומן")
+        panel.addView(TextView(this).apply {
+            text = Starter.readLog(this@MainActivity).ifEmpty { "—" }
+            textSize = 12f
+            typeface = Typeface.MONOSPACE
+            setTextColor(Retro.TEXT_DIM)
+            textDirection = View.TEXT_DIRECTION_RTL
+            background = Retro.rounded(Color.BLACK, Retro.dpf(this@MainActivity, 10f))
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+        })
+        return panel
+    }
+
+    // ---------- actions ----------
+
+    private fun requestOverlay() {
+        open(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+        toast("הפעל 'הצגה מעל אפליקציות אחרות'")
     }
 
     private fun startPairing() {
@@ -183,6 +278,22 @@ class MainActivity : Activity() {
             toast("צריך להיות מחובר ל-WiFi")
             return
         }
+        if (!Settings.canDrawOverlays(this)) {
+            AlertDialog.Builder(this)
+                .setTitle("חלון הקוד")
+                .setMessage(
+                    "כדי שתיבת הקוד תופיע מעל מסך ההגדרות, צריך לאשר 'הצגה מעל אפליקציות אחרות'.\n\n" +
+                        "אפשר גם להמשיך בלי, ולהקליד את הקוד בהתראה."
+                )
+                .setPositiveButton("אשר עכשיו") { _, _ -> requestOverlay() }
+                .setNegativeButton("המשך עם התראה") { _, _ -> beginPairing() }
+                .show()
+            return
+        }
+        beginPairing()
+    }
+
+    private fun beginPairing() {
         startForegroundService(Intent(this, PairingService::class.java).setAction(PairingService.ACTION_START))
         val dev = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
             .putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
@@ -191,6 +302,7 @@ class MainActivity : Activity() {
     }
 
     private fun openXiaomiAutostart() {
+        Starter.prefs(this).edit().putBoolean("autostart_visited", true).apply()
         val miui = Intent().setComponent(
             ComponentName(
                 "com.miui.securitycenter",
@@ -202,15 +314,6 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun requestBatteryExemption() {
-        val pm = getSystemService(PowerManager::class.java)
-        if (pm.isIgnoringBatteryOptimizations(packageName)) {
-            toast("כבר מבוטל ✓")
-            return
-        }
-        open(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
-    }
-
     private fun open(intent: Intent): Boolean = try {
         startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         true
@@ -219,38 +322,4 @@ class MainActivity : Activity() {
     }
 
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_LONG).show()
-
-    private fun card(parent: LinearLayout): LinearLayout {
-        val c = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(14), dp(16), dp(14))
-            background = GradientDrawable().apply {
-                setColor(Color.WHITE)
-                cornerRadius = dp(14).toFloat()
-            }
-            elevation = dp(2).toFloat()
-        }
-        parent.addView(c, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
-        return c
-    }
-
-    private fun title(s: String) = TextView(this).apply {
-        text = s
-        textSize = 17f
-        setTypeface(typeface, Typeface.BOLD)
-    }
-
-    private fun button(label: String, color: String, onClick: () -> Unit) = Button(this).apply {
-        text = label
-        isAllCaps = false
-        textSize = 16f
-        setTextColor(Color.WHITE)
-        gravity = Gravity.CENTER
-        background = GradientDrawable().apply {
-            setColor(Color.parseColor(color))
-            cornerRadius = dp(10).toFloat()
-        }
-        layoutParams = LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(8) }
-        setOnClickListener { onClick() }
-    }
 }

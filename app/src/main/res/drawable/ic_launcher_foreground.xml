@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+
+    <!-- USB-C cable and plug -->
+    <group android:translateY="2.5">
+    <path android:fillColor="#1A1A1A" android:pathData="M52.6,28.5h2.8v11h-2.8z" />
+    <path android:fillColor="#2B2B2B" android:pathData="M50.5,26.5h7v4.5h-7z" />
+    <path android:pathData="M50,20.5h8a2.2,2.2 0,0 1,2.2 2.2v2.6a2.2,2.2 0,0 1,-2.2 2.2h-8a2.2,2.2 0,0 1,-2.2 -2.2v-2.6a2.2,2.2 0,0 1,2.2 -2.2z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="54" android:startY="20.5"
+                android:endX="54" android:endY="27.5"
+                android:startColor="#F2F2F2" android:endColor="#9A9A9A" />
+        </aapt:attr>
+    </path>
+    <path android:fillColor="#3C3C3C" android:pathData="M51.2,23.2h5.6a0.8,0.8 0,0 1,0 1.6h-5.6a0.8,0.8 0,0 1,0 -1.6z" />
+    </group>
+
+    <!-- controller shadow -->
+    <path android:fillColor="#55000000"
+        android:pathData="M28.5,41.5h53a4.5,4.5 0,0 1,4.5 4.5v22a4.5,4.5 0,0 1,-4.5 4.5h-53a4.5,4.5 0,0 1,-4.5 -4.5v-22a4.5,4.5 0,0 1,4.5 -4.5z" />
+    <!-- grey body -->
+    <path android:pathData="M27,39h54a4.5,4.5 0,0 1,4.5 4.5v22a4.5,4.5 0,0 1,-4.5 4.5h-54a4.5,4.5 0,0 1,-4.5 -4.5v-22a4.5,4.5 0,0 1,4.5 -4.5z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="54" android:startY="39"
+                android:endX="54" android:endY="70"
+                android:startColor="#EDEDED" android:endColor="#B4B4B4" />
+        </aapt:attr>
+    </path>
+    <!-- black faceplate -->
+    <path android:fillColor="#1C1C1C"
+        android:pathData="M28.5,42.5h51a2,2 0,0 1,2 2v20a2,2 0,0 1,-2 2h-51a2,2 0,0 1,-2 -2v-20a2,2 0,0 1,2 -2z" />
+
+    <!-- D-pad -->
+    <path android:fillColor="#5A5A5A"
+        android:pathData="M34.6,47.1h3.8v4.2h4.2v3.8h-4.2v4.2h-3.8v-4.2h-4.2v-3.8h4.2z" />
+    <path android:fillColor="#0A0A0A"
+        android:pathData="M35.1,47.6h2.8v4.2h4.2v2.8h-4.2v4.2h-2.8v-4.2h-4.2v-2.8h4.2z" />
+
+    <!-- centre: grey stripes and SELECT / START -->
+    <path android:fillColor="#A6A6A6" android:pathData="M45,45.5h18v1.6h-18z" />
+    <path android:fillColor="#8A8A8A" android:pathData="M45,48.4h18v1.6h-18z" />
+    <path android:fillColor="#C9C9C9"
+        android:pathData="M46,52.5h16a1.2,1.2 0,0 1,1.2 1.2v6.6a1.2,1.2 0,0 1,-1.2 1.2h-16a1.2,1.2 0,0 1,-1.2 -1.2v-6.6a1.2,1.2 0,0 1,1.2 -1.2z" />
+    <path android:fillColor="#2A2A2A"
+        android:pathData="M47.6,55.6h4.6a1.1,1.1 0,0 1,0 2.2h-4.6a1.1,1.1 0,0 1,0 -2.2zM55.8,55.6h4.6a1.1,1.1 0,0 1,0 2.2h-4.6a1.1,1.1 0,0 1,0 -2.2z" />
+
+    <!-- B / A wells -->
+    <path android:fillColor="#C9C9C9"
+        android:pathData="M66,51h6.6a1,1 0,0 1,1 1v6.6a1,1 0,0 1,-1 1h-6.6a1,1 0,0 1,-1 -1v-6.6a1,1 0,0 1,1 -1zM75,51h6.6a1,1 0,0 1,1 1v6.6a1,1 0,0 1,-1 1h-6.6a1,1 0,0 1,-1 -1v-6.6a1,1 0,0 1,1 -1z" />
+    <!-- red buttons -->
+    <path android:fillColor="#8A0A1B"
+        android:pathData="M69.3,55.6m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0M78.3,55.6m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
+    <path android:fillColor="#E1213A"
+        android:pathData="M69.3,55m-2.7,0a2.7,2.7 0,1 1,5.4 0a2.7,2.7 0,1 1,-5.4 0M78.3,55m-2.7,0a2.7,2.7 0,1 1,5.4 0a2.7,2.7 0,1 1,-5.4 0" />
+    <path android:fillColor="#66FFFFFF"
+        android:pathData="M68.3,53.8m-0.9,0a0.9,0.9 0,1 1,1.8 0a0.9,0.9 0,1 1,-1.8 0M77.3,53.8m-0.9,0a0.9,0.9 0,1 1,1.8 0a0.9,0.9 0,1 1,-1.8 0" />
+</vector>
