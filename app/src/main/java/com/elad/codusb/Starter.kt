@@ -221,7 +221,7 @@ object Starter {
         val enabled = enableWirelessDebugging(ctx)
         progress("מתחבר...")
         val m = connect(ctx, if (enabled) 60_000 else 20_000)
-            ?: return if (enabled) "לא הצלחתי להתחבר לניפוי הבאגים האלחוטי. נסה שוב בעוד רגע."
+            ?: return if (enabled) "לא הצלחתי להתחבר. אם הופיע חלון 'לאפשר ניפוי באגים אלחוטי ברשת זו?' – סמן 'אפשר תמיד' ואשר, ואז לחץ A."
             else "הדלק 'ניפוי באגים אלחוטי' באפשרויות מפתח ולחץ 'הפעל עכשיו'."
 
         if (!hasSecureSettings(ctx)) grantSecureSettings(ctx, m)

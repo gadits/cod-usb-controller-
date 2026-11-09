@@ -192,8 +192,9 @@ class MainActivity : Activity() {
             card.addView(
                 Ui.text(
                     this,
-                    "לחץ 'התחל צימוד'. באפשרויות מפתח הדלק 'ניפוי באגים אלחוטי', היכנס אליו ובחר " +
-                        "'צימוד מכשיר באמצעות קוד צימוד'. תיבה תופיע למעלה – הקלד בה את הקוד."
+                    "לחץ 'התחל צימוד'. באפשרויות מפתח הדלק 'ניפוי באגים אלחוטי' – בחלון שקופץ סמן " +
+                        "'אפשר תמיד ברשת זו' ואשר. אחר כך היכנס אליו ובחר 'צימוד מכשיר באמצעות קוד צימוד'. " +
+                        "תיבת הקוד תיפתח לבד – הקלד בה את 6 הספרות."
                 ).apply { setPadding(0, dp(6), 0, 0) }
             )
         }
@@ -230,7 +231,7 @@ class MainActivity : Activity() {
                 open(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
             } else toast("כבר מבוטל ✓")
         })
-        card.addView(Ui.text(this, "צריך להיות מחובר ל-WiFi בזמן ההפעלה.", 13f, Ui.INK_FAINT).apply {
+        card.addView(Ui.text(this, "צריך להיות מחובר ל-WiFi בזמן ההפעלה. ברשת חדשה יופיע חלון 'לאפשר ניפוי באגים אלחוטי ברשת זו?' – סמן 'אפשר תמיד' ואשר.", 13f, Ui.INK_FAINT).apply {
             setPadding(0, dp(12), 0, 0)
         })
         return card

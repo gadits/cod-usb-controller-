@@ -149,18 +149,28 @@ def tap_text(rx, tries=8, cls=None):
     return None
 
 
+last_block = [""]
+
+
 def overlay_window():
     """Frame of our floating pairing window, or None."""
     out = run("adb shell dumpsys window windows", 30)
     blocks = re.split(r"\n\s*Window #\d+ ", out)
     for b in blocks:
         if "CodUsbPairing" in b.split("\n", 1)[0]:
-            m = re.search(r"\bframe=\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]", b) or \
+            last_block[0] = b
+            m = re.search(r"Frames:.*?\bframe=\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]", b) or \
+                re.search(r"[^a-zA-Z]frame=\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]", b) or \
                 re.search(r"mFrame=\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]", b)
             if m:
                 return tuple(map(int, m.groups()))
             return (0, 0, 0, 0)
     return None
+
+
+def save_block(name):
+    with open(f"{OUT}/window_{name}.txt", "w") as f:
+        f.write(last_block[0])
 
 
 def virtual_present():
@@ -181,6 +191,23 @@ def launch_app():
     run(f"adb shell am start -W -n {PKG}/.MainActivity", 60)
     time.sleep(2.5)
     dismiss_system_dialogs()
+
+
+def allow_network_prompt():
+    """'Allow wireless debugging on this network?' → tick 'Always allow' and press Allow."""
+    xml = dump()
+    if "Allow wireless debugging" not in xml:
+        return False
+    box = find(r"Always allow on this network", xml)
+    if box:
+        tap(box["cx"], box["cy"])
+        time.sleep(0.5)
+    btn = find(r"^Allow$", dump())
+    if btn:
+        tap(btn["cx"], btn["cy"])
+        time.sleep(2)
+    log("allowed wireless debugging on this network")
+    return True
 
 
 def read_pairing_code():
@@ -209,7 +236,18 @@ def main():
     for _ in range(4):
         dismiss_system_dialogs()
         time.sleep(2)
-    log("wifi:", run("adb shell dumpsys wifi | grep -m1 'mNetworkInfo'"))
+    log("wifi:", run("adb shell cmd wifi status"))
+    run("adb shell am start -a android.settings.DEVICE_INFO_SETTINGS", 30)
+    time.sleep(3)
+    n = tap_text(r"^Build number$", tries=8)
+    if n:
+        for _ in range(8):
+            tap(n["cx"], n["cy"])
+            time.sleep(0.25)
+    time.sleep(1)
+    run("adb shell input keyevent 4")
+    run("adb shell input keyevent 3")
+    time.sleep(1)
 
     # ---------- 1. helper ----------
     apk_path = run(f"adb shell pm path {PKG}").strip().splitlines()[0].replace("package:", "").strip()
@@ -251,11 +289,19 @@ def main():
     time.sleep(2)
     shot("after_x_settings_with_chip")
     if win:
+        save_block("chip")
+        log("chip frame:", win)
         result("code_box_starts_small", (win[2] - win[0]) < W * 0.9)
 
     # ---------- 4. open the pairing dialog ----------
+    if not find(r"^Wireless debugging$|^Developer options$|^Debugging$"):
+        log("Settings did not open developer options, opening directly")
+        run("adb shell am start -a android.settings.APPLICATION_DEVELOPMENT_SETTINGS", 30)
+        time.sleep(3)
+    shot("developer_options")
     run("adb shell settings put global adb_wifi_enabled 1")
     time.sleep(2)
+    allow_network_prompt()
     if not tap_text(r"^Wireless debugging$"):
         result("wireless_debugging_opened", False)
         shot("no_wireless_debugging")
@@ -263,11 +309,7 @@ def main():
     result("wireless_debugging_opened", True)
     time.sleep(3)
     shot("wireless_debugging_screen")
-    # some versions ask to allow the network first
-    n = find(r"^Allow$")
-    if n:
-        tap(n["cx"], n["cy"])
-        time.sleep(2)
+    allow_network_prompt()
     if not tap_text(r"Pair device with pairing code", tries=3):
         result("pair_dialog_opened", False)
         shot("no_pair_option")
@@ -283,6 +325,7 @@ def main():
         return w if (w and (w[2] - w[0]) >= W * 0.9) else None
 
     win, dt = wait_for(expanded, 25, 0.1)
+    save_block("expanded")
     result("code_box_expands_by_itself", bool(win))
     result("code_box_expand_seconds_after_dialog", round(time.time() - t_dialog, 2) if win else None)
     time.sleep(1.5)
