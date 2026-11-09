@@ -1,9 +1,5 @@
 package com.elad.codusb
 
-import android.app.Notification
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.app.RemoteInput
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
@@ -15,8 +11,8 @@ import kotlin.concurrent.thread
 
 /**
  * One-time pairing with the device's own wireless debugging.
- * The pairing code is typed straight into the notification, so the Settings screen
- * with the code can stay open.
+ * The code is typed into [PairingOverlay]; this service finds the pairing port via mDNS,
+ * pairs, then connects and creates the virtual controller.
  */
 class PairingService : Service() {
 
@@ -24,126 +20,118 @@ class PairingService : Service() {
     private var pairingPort = -1
     @Volatile
     private var busy = false
+    @Volatile
+    private var detectedOnce = false
     private var mdns: AdbMdns? = null
     private val handler = Handler(Looper.getMainLooper())
-    private val nm by lazy { getSystemService(NotificationManager::class.java) }
-    private val overlay by lazy {
-        CodeOverlay(this, onCode = { code -> if (!busy) thread { pair(code) } }, onCancel = { finish(null) })
-    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_REPLY -> {
-                val code = RemoteInput.getResultsFromIntent(intent)
-                    ?.getCharSequence(KEY_CODE)?.toString()?.filter { it.isDigit() } ?: ""
-                if (!busy) thread { pair(code) }
+            ACTION_START -> begin()
+            ACTION_CODE -> {
+                val code = intent.getStringExtra(EXTRA_CODE) ?: ""
+                val port = intent.getIntExtra(EXTRA_PORT, 0)
+                if (!busy) {
+                    busy = true
+                    thread(name = "codusb-pair") { pair(code, port) }
+                }
             }
-            ACTION_STOP -> finish(null)
-            else -> begin()
+            ACTION_STOP -> finish()
+            else -> if (mdns == null) begin()
         }
         return START_NOT_STICKY
     }
 
     private fun begin() {
-        val n = Notif.simple(
-            this, Notif.CH_PAIR,
-            "מחפש... פתח 'ניפוי באגים אלחוטי' ← 'צימוד מכשיר באמצעות קוד צימוד'.",
-            true
-        )
+        val n = Notif.simple(this, Notif.CH_STATUS, "צימוד פעיל – הקלד את הקוד בתיבה שעל המסך", true)
         if (Build.VERSION.SDK_INT >= 34) {
             startForeground(Notif.ID_PAIR, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
             startForeground(Notif.ID_PAIR, n)
         }
+        pairingPort = -1
+        detectedOnce = false
+        busy = false
         mdns?.stop()
         mdns = AdbMdns(this, AdbMdns.PAIRING) { port ->
-            if (port != pairingPort && !busy) {
-                pairingPort = port
-                nm.notify(Notif.ID_PAIR, inputNotification("נמצא! הקלד כאן את קוד הצימוד בן 6 הספרות:"))
-                overlay.show("הקלד את 6 הספרות שמופיעות בחלון של ההגדרות:")
+            // a new port means a newly opened dialog: always keep the latest
+            pairingPort = port
+            if (!busy) {
+                if (!detectedOnce) Starter.log(this, "חלון הצימוד זוהה (יציאה $port)")
+                detectedOnce = true
+                PairingOverlay.dialogDetected()
             }
         }.also { it.start() }
+
         handler.removeCallbacksAndMessages(null)
-        handler.postDelayed({ if (!busy) finish("הצימוד בוטל (עברו 10 דקות). נסה שוב מהאפליקציה.") }, 10 * 60_000L)
+        handler.postDelayed({
+            if (!detectedOnce && !busy) {
+                PairingOverlay.setStatus(
+                    "עדיין לא זוהה חלון צימוד. ודא שפתחת 'צימוד מכשיר באמצעות קוד צימוד'",
+                    PairingOverlay.Kind.INFO
+                )
+            }
+        }, 30_000L)
+        handler.postDelayed({ if (!busy) finish() }, 15 * 60_000L)
     }
 
-    private fun inputNotification(text: String): Notification {
-        val replyIntent = PendingIntent.getService(
-            this, 1,
-            Intent(this, PairingService::class.java).setAction(ACTION_REPLY),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-        )
-        val remoteInput = RemoteInput.Builder(KEY_CODE).setLabel("קוד צימוד").build()
-        val action = Notification.Action.Builder(null, "הקלד קוד", replyIntent)
-            .addRemoteInput(remoteInput)
-            .build()
-        val stopIntent = PendingIntent.getService(
-            this, 2,
-            Intent(this, PairingService::class.java).setAction(ACTION_STOP),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        return Notification.Builder(this, Notif.CH_PAIR)
-            .setSmallIcon(android.R.drawable.ic_menu_manage)
-            .setContentTitle("צימוד שלט USB ל-COD")
-            .setContentText(text)
-            .setStyle(Notification.BigTextStyle().bigText(text))
-            .addAction(action)
-            .addAction(Notification.Action.Builder(null, "ביטול", stopIntent).build())
-            .setOngoing(true)
-            .setOnlyAlertOnce(false)
-            .build()
-    }
+    private fun pair(code: String, manualPort: Int) {
+        try {
+            var port = if (manualPort > 0) manualPort else pairingPort
+            if (port <= 0) {
+                PairingOverlay.setStatus("מחפש את חלון הצימוד...", PairingOverlay.Kind.BUSY)
+                val until = System.currentTimeMillis() + 8_000
+                while (pairingPort <= 0 && System.currentTimeMillis() < until) Thread.sleep(200)
+                port = pairingPort
+            }
+            if (port <= 0) {
+                PairingOverlay.askPort()
+                return
+            }
 
-    private fun pair(code: String) {
-        if (code.length != 6 || pairingPort <= 0) {
-            nm.notify(Notif.ID_PAIR, inputNotification("הקוד צריך להיות 6 ספרות. נסה שוב:"))
-            overlay.setMessage("הקוד צריך להיות 6 ספרות", true)
-            return
-        }
-        busy = true
-        nm.notify(Notif.ID_PAIR, Notif.simple(this, Notif.CH_PAIR, "מצמד...", true))
-        overlay.setMessage("מצמד...", false)
-        val ok = try {
-            AdbManager.get(this).pair("127.0.0.1", pairingPort, code)
-        } catch (t: Throwable) {
-            Starter.log(this, "צימוד נכשל: ${t.javaClass.simpleName}: ${t.message}")
-            false
-        }
-        if (!ok) {
+            val ok = try {
+                AdbManager.get(this).pair("127.0.0.1", port, code)
+            } catch (t: Throwable) {
+                Starter.log(this, "צימוד נכשל: ${t.javaClass.simpleName}: ${t.message}")
+                false
+            }
+            if (!ok) {
+                PairingOverlay.codeRejected("הצימוד נכשל – קוד שגוי או שפג תוקפו. פתח קוד חדש והקלד שוב")
+                return
+            }
+
+            Starter.setPaired(this, true)
+            Starter.log(this, "הצימוד הצליח")
+            mdns?.stop()
+            mdns = null
+            PairingOverlay.setStatus("✓ צומד! מתחבר...", PairingOverlay.Kind.OK)
+            val result = Starter.afterPairing(this) { msg ->
+                PairingOverlay.setStatus(msg, PairingOverlay.Kind.BUSY)
+            }
+            Starter.log(this, result)
+            PairingOverlay.finishWith(result, Starter.isVirtualPresent(this))
+            handler.post { stopService() }
+        } finally {
             busy = false
-            nm.notify(
-                Notif.ID_PAIR,
-                inputNotification("הצימוד נכשל (קוד שגוי או שפג תוקפו). פתח קוד חדש והקלד אותו כאן:")
-            )
-            overlay.setMessage("קוד שגוי או שפג תוקפו. נסה שוב:", true)
-            return
         }
-        Starter.setPaired(this, true)
-        Starter.log(this, "הצימוד הצליח")
-        mdns?.stop()
-        overlay.hide()
-        val result = Starter.afterPairing(this) { msg ->
-            nm.notify(Notif.ID_PAIR, Notif.simple(this, Notif.CH_PAIR, msg, true))
-        }
-        Starter.log(this, result)
-        finish(result)
     }
 
-    private fun finish(message: String?) {
+    private fun stopService() {
         handler.removeCallbacksAndMessages(null)
-        overlay.hide()
         mdns?.stop()
         mdns = null
-        busy = false
         stopForeground(STOP_FOREGROUND_REMOVE)
-        if (message != null) Notif.result(this, message)
         stopSelf()
     }
 
+    private fun finish() {
+        PairingOverlay.hide()
+        stopService()
+    }
+
     override fun onDestroy() {
-        overlay.hide()
         mdns?.stop()
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
@@ -151,8 +139,9 @@ class PairingService : Service() {
 
     companion object {
         const val ACTION_START = "com.elad.codusb.PAIR_START"
-        const val ACTION_REPLY = "com.elad.codusb.PAIR_REPLY"
+        const val ACTION_CODE = "com.elad.codusb.PAIR_CODE"
         const val ACTION_STOP = "com.elad.codusb.PAIR_STOP"
-        const val KEY_CODE = "code"
+        const val EXTRA_CODE = "code"
+        const val EXTRA_PORT = "port"
     }
 }

@@ -264,25 +264,26 @@ class MainActivity : Activity() {
         }
         if (!Settings.canDrawOverlays(this)) {
             AlertDialog.Builder(this)
-                .setTitle("חלון הקוד")
+                .setTitle("צריך אישור אחד")
                 .setMessage(
-                    "כדי שתיבת הקוד תופיע מעל מסך ההגדרות, צריך לאשר 'הצגה מעל אפליקציות אחרות'.\n\n" +
-                        "אפשר גם להמשיך בלי, ולהקליד את הקוד בהתראה."
+                    "תיבת הקלדת הקוד מופיעה מעל מסך ההגדרות.\n" +
+                        "לשם כך יש לאשר 'הצגה מעל אפליקציות אחרות' לאפליקציה, ואז ללחוץ שוב על צימוד."
                 )
-                .setPositiveButton("אשר עכשיו") { _, _ -> requestOverlay() }
-                .setNegativeButton("המשך עם התראה") { _, _ -> beginPairing() }
+                .setPositiveButton("לאישור") { _, _ -> requestOverlay() }
+                .setNegativeButton("ביטול", null)
                 .show()
             return
         }
-        beginPairing()
-    }
-
-    private fun beginPairing() {
+        // show the code box now, while we are in the foreground (also needed on Xiaomi)
+        if (!PairingOverlay.show(this)) {
+            toast("לא הצלחתי להציג את תיבת הקוד")
+            return
+        }
         startForegroundService(Intent(this, PairingService::class.java).setAction(PairingService.ACTION_START))
         val dev = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
             .putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
         open(dev)
-        toast("הדלק 'ניפוי באגים אלחוטי' ← צימוד באמצעות קוד")
+        toast("ניפוי באגים אלחוטי ← צימוד מכשיר באמצעות קוד צימוד")
     }
 
     private fun openXiaomiAutostart() {
