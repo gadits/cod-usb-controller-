@@ -233,10 +233,14 @@ class MainActivity : Activity() {
         val battery = Starter.isBatteryUnrestricted(this)
         val panel = Retro.faceplate(this, "כדי שזה יעלה לבד אחרי הדלקה")
         if (Starter.isXiaomi()) {
-            val auto = Starter.autostartOk(this)
-            panel.addView(Retro.pill(this, if (auto) "✓  הפעלה אוטומטית: מאושרת" else "אשר הפעלה אוטומטית", auto) {
-                openXiaomiAutostart()
-            })
+            // Green only when the system itself confirms the permission
+            val auto = Starter.miuiAutostartAllowed(this)
+            val label = when (auto) {
+                true -> "✓  הפעלה אוטומטית: מאושרת"
+                false -> "אשר הפעלה אוטומטית"
+                null -> "אשר הפעלה אוטומטית (לא ניתן לאמת)"
+            }
+            panel.addView(Retro.pill(this, label, auto == true) { openXiaomiAutostart() })
         }
         panel.addView(Retro.pill(this, if (battery) "✓  הגבלת סוללה: מבוטלת" else "בטל הגבלת סוללה", battery) {
             if (!battery) {
@@ -302,7 +306,6 @@ class MainActivity : Activity() {
     }
 
     private fun openXiaomiAutostart() {
-        Starter.prefs(this).edit().putBoolean("autostart_visited", true).apply()
         val miui = Intent().setComponent(
             ComponentName(
                 "com.miui.securitycenter",

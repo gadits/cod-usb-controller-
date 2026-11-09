@@ -86,8 +86,6 @@ object Starter {
         }
     }
 
-    fun autostartOk(ctx: Context): Boolean =
-        miuiAutostartAllowed(ctx) ?: prefs(ctx).getBoolean("autostart_visited", false)
 
     fun isWifiConnected(ctx: Context): Boolean {
         val cm = ctx.getSystemService(ConnectivityManager::class.java)
