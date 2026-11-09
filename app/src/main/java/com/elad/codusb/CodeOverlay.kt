@@ -39,55 +39,47 @@ class CodeOverlay(private val ctx: Context, private val onCode: (String) -> Unit
         }
         if (!Settings.canDrawOverlays(ctx)) return@post
         val c = ctx
-        val panel = Retro.faceplate(c, null).apply {
+        val panel = Ui.card(c, "קוד צימוד", Ui.GREEN).apply {
             layoutDirection = View.LAYOUT_DIRECTION_RTL
-            addView(Retro.stripes(c))
-            addView(TextView(c).apply {
-                this.text = "קוד צימוד"
-                textSize = 20f
-                setTypeface(Typeface.DEFAULT, Typeface.BOLD)
-                setTextColor(Retro.RED_TEXT)
-                setPadding(0, Retro.dp(c, 12), 0, Retro.dp(c, 4))
-            })
-            message = TextView(c).apply {
-                this.text = msg
-                textSize = 15f
-                setTextColor(Retro.TEXT_LIGHT)
-            }
+            message = Ui.text(c, msg, 15f, Ui.INK_SOFT, Ui.MEDIUM)
             addView(message)
             input = EditText(c).apply {
                 inputType = InputType.TYPE_CLASS_NUMBER
                 filters = arrayOf(InputFilter.LengthFilter(6))
-                textSize = 30f
-                typeface = Retro.pixel(c)
-                letterSpacing = 0.15f
+                textSize = 34f
+                typeface = Ui.BLACK
+                letterSpacing = 0.35f
                 gravity = Gravity.CENTER
-                hint = "------"
-                setTextColor(Retro.TEXT_LIGHT)
-                setHintTextColor(Retro.STRIPE)
+                hint = "••••••"
+                setTextColor(Ui.INK)
+                setHintTextColor(Ui.OFF)
                 textDirection = View.TEXT_DIRECTION_LTR
-                background = Retro.rounded(
-                    android.graphics.Color.BLACK, Retro.dpf(c, 14f), Retro.STRIPE, Retro.dp(c, 2)
-                )
-                setPadding(0, Retro.dp(c, 14), 0, Retro.dp(c, 14))
+                background = Ui.rounded(Ui.WELL, Ui.dpf(c, 18f), Ui.SHELL_EDGE, Ui.dp(c, 1))
+                setPadding(0, Ui.dp(c, 14), 0, Ui.dp(c, 14))
                 imeOptions = EditorInfo.IME_ACTION_DONE
                 setOnEditorActionListener { _, _, _ -> submit(); true }
             }
-            addView(input, LinearLayout.LayoutParams(-1, -2).apply { topMargin = Retro.dp(c, 12) })
+            addView(input, LinearLayout.LayoutParams(-1, -2).apply { topMargin = Ui.dp(c, 14) })
             val row = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL }
             row.addView(
-                Retro.pill(c, "צמד ✓", true) { submit() },
-                LinearLayout.LayoutParams(0, Retro.dp(c, 52), 1f).apply {
-                    topMargin = Retro.dp(c, 12); marginEnd = Retro.dp(c, 6)
+                Ui.bumper(c, "צמד", true) { submit() },
+                LinearLayout.LayoutParams(0, Ui.dp(c, 54), 1f).apply {
+                    topMargin = Ui.dp(c, 14); marginEnd = Ui.dp(c, 6)
                 }
             )
             row.addView(
-                Retro.pill(c, "ביטול") { hide(); onCancel() },
-                LinearLayout.LayoutParams(0, Retro.dp(c, 52), 1f).apply {
-                    topMargin = Retro.dp(c, 12); marginStart = Retro.dp(c, 6)
+                Ui.bumper(c, "ביטול") { hide(); onCancel() },
+                LinearLayout.LayoutParams(0, Ui.dp(c, 54), 1f).apply {
+                    topMargin = Ui.dp(c, 14); marginStart = Ui.dp(c, 6)
                 }
             )
             addView(row)
+        }
+        // room around the card so its shadow is visible
+        val holder = android.widget.FrameLayout(c).apply {
+            setPadding(Ui.dp(c, 14), Ui.dp(c, 6), Ui.dp(c, 14), Ui.dp(c, 18))
+            clipToPadding = false
+            addView(panel)
         }
 
         val lp = WindowManager.LayoutParams(
@@ -99,14 +91,13 @@ class CodeOverlay(private val ctx: Context, private val onCode: (String) -> Unit
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP
-            y = Retro.dp(c, 40)
-            horizontalMargin = 0.04f
-            softInputMode = WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE or
+            y = Ui.dp(c, 36)
+                        softInputMode = WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE or
                 WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN
         }
         try {
-            wm.addView(panel, lp)
-            root = panel
+            wm.addView(holder, lp)
+            root = holder
             input?.requestFocus()
             main.postDelayed({
                 input?.let {
@@ -132,7 +123,7 @@ class CodeOverlay(private val ctx: Context, private val onCode: (String) -> Unit
 
     fun setMessage(text: String, error: Boolean) = main.post {
         message?.text = text
-        message?.setTextColor(if (error) Retro.RED_TEXT else Retro.TEXT_LIGHT)
+        message?.setTextColor(if (error) Ui.RED else Ui.INK_SOFT)
         if (error) input?.setText("")
     }
 

@@ -30,6 +30,7 @@ class MainActivity : Activity() {
 
     private lateinit var scroll: ScrollView
     private lateinit var content: LinearLayout
+    private var setupCard: View? = null
     private val handler = Handler(Looper.getMainLooper())
 
     private val doneReceiver = object : BroadcastReceiver() {
@@ -42,23 +43,30 @@ class MainActivity : Activity() {
         override fun onInputDeviceChanged(deviceId: Int) {}
     }
 
-    private fun dp(v: Int) = Retro.dp(this, v)
+    private fun dp(v: Int) = Ui.dp(this, v)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.statusBarColor = Retro.FACE
-        window.navigationBarColor = Retro.BODY
+        window.statusBarColor = Ui.BG_TOP
+        window.navigationBarColor = Ui.BG_BOTTOM
+        @Suppress("DEPRECATION")
+        window.decorView.systemUiVisibility =
+            View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_RTL
 
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(16), dp(16), dp(28))
+            setPadding(dp(18), dp(14), dp(18), dp(32))
+            clipChildren = false
+            clipToPadding = false
         }
         scroll = ScrollView(this).apply {
             background = GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Retro.BODY_LIGHT, Retro.BODY, Color.parseColor("#B8B8B8"))
+                intArrayOf(Ui.BG_TOP, Color.parseColor("#E9EBEE"), Ui.BG_BOTTOM)
             )
+            isVerticalScrollBarEnabled = false
+            clipChildren = false
             addView(content)
         }
         setContentView(scroll)
@@ -86,188 +94,160 @@ class MainActivity : Activity() {
         getSystemService(InputManager::class.java).unregisterInputDeviceListener(deviceListener)
     }
 
-    // ---------- UI ----------
+    // ---------- screen ----------
 
     private fun render() {
         val y = scroll.scrollY
         content.removeAllViews()
         content.addView(header())
-        content.addView(statusPanel(), gap())
-        content.addView(setupPanel(), gap())
-        content.addView(bootPanel(), gap())
-        content.addView(logPanel(), gap())
+        content.addView(statusCard(), gap(10))
+        content.addView(controlsCard(), gap(18))
+        setupCard = setupCard().also { content.addView(it, gap(18)) }
+        content.addView(bootCard(), gap(18))
+        content.addView(logCard(), gap(18))
         scroll.post { scroll.scrollTo(0, y) }
     }
 
-    private fun gap() = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) }
-
-    private fun header(): View {
-        val logo = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            background = Retro.rounded(Retro.FACE, Retro.dpf(this@MainActivity, 14f), Retro.FACE_EDGE, dp(2))
-            setPadding(dp(16), dp(16), dp(16), dp(14))
-            layoutDirection = View.LAYOUT_DIRECTION_LTR
-            addView(TextView(this@MainActivity).apply {
-                text = "COD USB"
-                textSize = 26f
-                typeface = Retro.pixel(this@MainActivity)
-                setTextColor(Retro.RED_TEXT)
-                setShadowLayer(0.01f, dp(3).toFloat(), dp(3).toFloat(), Retro.RED_DARK)
-                gravity = Gravity.CENTER
-            })
-            addView(TextView(this@MainActivity).apply {
-                text = "CONTROLLER"
-                textSize = 11f
-                letterSpacing = 0.3f
-                typeface = Retro.pixel(this@MainActivity)
-                setTextColor(Retro.STRIPE_LIGHT)
-                gravity = Gravity.CENTER
-                setPadding(0, dp(10), 0, 0)
-            })
-        }
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(logo)
-            addView(TextView(this@MainActivity).apply {
-                text = "כל שלט USB ב-Call of Duty Mobile"
-                textSize = 14f
-                setTypeface(Typeface.DEFAULT, Typeface.BOLD)
-                setTextColor(Color.parseColor("#4A4A4A"))
-                gravity = Gravity.CENTER
-                setPadding(0, dp(8), 0, 0)
-            })
-        }
+    private fun gap(top: Int) = LinearLayout.LayoutParams(-1, -2).apply {
+        topMargin = dp(top)
+        leftMargin = dp(2)
+        rightMargin = dp(2)
     }
 
-    private fun statusPanel(): View {
+    private fun header(): View = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(dp(6), dp(6), dp(6), dp(4))
+        addView(TextView(this@MainActivity).apply {
+            text = "COD USB"
+            textSize = 30f
+            typeface = Ui.BLACK
+            setTextColor(Ui.INK)
+        })
+        addView(Ui.text(this@MainActivity, "כל שלט USB ב-Call of Duty Mobile", 15f, Ui.INK_SOFT, Ui.MEDIUM))
+    }
+
+    private fun statusCard(): View {
         val active = Starter.isVirtualPresent(this)
         val pads = Starter.realGamepads(this)
-        val panel = Retro.faceplate(this, null)
-        panel.addView(Retro.stripes(this))
-        panel.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(14), 0, dp(2))
-            addView(Retro.led(this@MainActivity, active).apply {
-                layoutParams = LinearLayout.LayoutParams(dp(18), dp(18)).apply { marginEnd = dp(12) }
-            })
-            addView(TextView(this@MainActivity).apply {
-                text = if (active) "השלט הווירטואלי פעיל" else "השלט הווירטואלי כבוי"
-                textSize = 20f
-                setTypeface(Typeface.DEFAULT, Typeface.BOLD)
-                setTextColor(if (active) Retro.LED_GREEN else Retro.TEXT_LIGHT)
-            })
-        })
-        panel.addView(TextView(this).apply {
-            text = if (pads.isEmpty()) "לא זוהה שלט מחובר כרגע" else "🎮 " + pads.joinToString(" · ")
-            textSize = 14f
-            setTextColor(Retro.TEXT_DIM)
-            setPadding(dp(30), dp(2), 0, dp(14))
-        })
-
-        // A (start) on the right, B (stop) on the left — like the real controller
-        panel.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
+        val card = Ui.card(this, null)
+        card.gravity = Gravity.CENTER_HORIZONTAL
+        card.addView(Ui.statusOrb(this, active, if (active) "פעיל" else "כבוי"))
+        card.addView(TextView(this).apply {
+            text = if (active) "השלט הווירטואלי פעיל – אפשר לשחק" else "השלט הווירטואלי כבוי"
+            textSize = 18f
+            typeface = Ui.BOLD
             gravity = Gravity.CENTER
-            addView(Retro.roundButton(this@MainActivity, "A", "הפעל") {
-                startForegroundService(Intent(this@MainActivity, StartService::class.java))
-                toast("מפעיל... התוצאה תופיע בהתראה")
-            }, LinearLayout.LayoutParams(0, -2, 1f))
-            addView(Retro.roundButton(this@MainActivity, "B", "כבה") {
-                startForegroundService(
-                    Intent(this@MainActivity, StartService::class.java).setAction(StartService.ACTION_STOP)
-                )
-                toast("מכבה...")
-            }, LinearLayout.LayoutParams(0, -2, 1f))
+            setTextColor(if (active) Ui.GREEN_DEEP else Ui.INK)
+            setPadding(0, dp(4), 0, dp(10))
         })
-
-        val auto = Starter.autoStart(this)
-        panel.addView(Retro.pill(this, if (auto) "✓  הפעלה אוטומטית בהדלקה: פועל" else "הפעלה אוטומטית בהדלקה: כבוי", auto) {
-            Starter.setAutoStart(this, !auto)
-            render()
-        }.apply { (layoutParams as LinearLayout.LayoutParams).topMargin = dp(18) })
-        return panel
+        // chip with the controllers Android sees right now
+        card.addView(TextView(this).apply {
+            text = if (pads.isEmpty()) "לא מחובר שלט כרגע" else "מחובר: " + pads.joinToString(" · ")
+            textSize = 13.5f
+            typeface = Ui.MEDIUM
+            gravity = Gravity.CENTER
+            setTextColor(Ui.INK_SOFT)
+            background = Ui.rounded(Ui.WELL, Ui.dpf(this@MainActivity, 14f), Ui.SHELL_EDGE, 1)
+            setPadding(dp(14), dp(7), dp(14), dp(7))
+        }, LinearLayout.LayoutParams(-2, -2).apply { gravity = Gravity.CENTER_HORIZONTAL })
+        return card
     }
 
-    private fun setupPanel(): View {
+    private fun controlsCard(): View {
+        val card = Ui.card(this, "שליטה")
+        val size = 86
+        val a = Ui.faceButton(this, "A", "הפעל", Ui.GREEN, Ui.GREEN_DEEP, size) {
+            startForegroundService(Intent(this, StartService::class.java))
+            toast("מפעיל... התוצאה תופיע בהתראה")
+        }
+        val b = Ui.faceButton(this, "B", "כבה", Ui.RED, Ui.RED_DEEP, size) {
+            startForegroundService(Intent(this, StartService::class.java).setAction(StartService.ACTION_STOP))
+            toast("מכבה...")
+        }
+        val x = Ui.faceButton(this, "X", "צימוד", Ui.BLUE, Ui.BLUE_DEEP, size) { startPairing() }
+        val y = Ui.faceButton(this, "Y", "הגדרות", Ui.YELLOW, Ui.YELLOW_DEEP, size) {
+            setupCard?.let { v -> scroll.smoothScrollTo(0, v.top - dp(12)) }
+        }
+        card.addView(Ui.diamond(this, y, x, b, a, size, 16), LinearLayout.LayoutParams(-1, -2))
+
+        val auto = Starter.autoStart(this)
+        card.addView(Ui.bumper(this, if (auto) "הפעלה אוטומטית בהדלקה: פועלת" else "הפעלה אוטומטית בהדלקה: כבויה", auto) {
+            Starter.setAutoStart(this, !auto)
+            render()
+        })
+        return card
+    }
+
+    private fun setupCard(): View {
         val devOn = Settings.Global.getInt(contentResolver, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) == 1
         val paired = Starter.isPaired(this)
         val wss = Starter.hasSecureSettings(this)
         val overlay = Settings.canDrawOverlays(this)
 
-        val panel = Retro.faceplate(this, "הגדרה חד-פעמית")
-        panel.addView(Retro.ledRow(this, devOn, if (devOn) "אפשרויות מפתח פעילות" else "אפשרויות מפתח כבויות"))
-        panel.addView(Retro.ledRow(this, paired, if (paired) "צימוד בוצע" else "עוד לא בוצע צימוד"))
-        panel.addView(
-            Retro.ledRow(
-                this, wss,
-                if (wss) "הפעלה אחרי הדלקה מאושרת" else "הפעלה אחרי הדלקה עוד לא מאושרת"
-            )
-        )
+        val card = Ui.card(this, "הגדרה חד-פעמית", Ui.BLUE)
+        card.addView(Ui.lightRow(this, devOn, if (devOn) "אפשרויות מפתח פעילות" else "אפשרויות מפתח כבויות"))
+        card.addView(Ui.lightRow(this, paired, if (paired) "צימוד בוצע" else "עוד לא בוצע צימוד"))
+        card.addView(Ui.lightRow(this, wss, if (wss) "הפעלה אחרי הדלקה מאושרת" else "הפעלה אחרי הדלקה לא מאושרת"))
         if (!paired) {
-            panel.addView(TextView(this).apply {
-                text = "לחץ 'התחל צימוד'. באפשרויות מפתח הדלק 'ניפוי באגים אלחוטי', היכנס אליו ובחר " +
-                    "'צימוד מכשיר באמצעות קוד צימוד'. תיבה גדולה תופיע למעלה – הקלד בה את הקוד."
-                textSize = 14f
-                setTextColor(Retro.TEXT_DIM)
-                setPadding(0, dp(8), 0, 0)
-            })
+            card.addView(
+                Ui.text(
+                    this,
+                    "לחץ 'התחל צימוד'. באפשרויות מפתח הדלק 'ניפוי באגים אלחוטי', היכנס אליו ובחר " +
+                        "'צימוד מכשיר באמצעות קוד צימוד'. תיבה תופיע למעלה – הקלד בה את הקוד."
+                ).apply { setPadding(0, dp(6), 0, 0) }
+            )
         }
         if (!devOn) {
-            panel.addView(Retro.pill(this, "1. פתח 'מידע על הטלפון'") {
+            card.addView(Ui.bumper(this, "פתח 'מידע על הטלפון'") {
                 open(Intent(Settings.ACTION_DEVICE_INFO_SETTINGS))
                 toast("לחץ 7 פעמים על 'גרסת MIUI/HyperOS' או 'מספר Build'")
             })
         }
-        panel.addView(Retro.pill(this, if (overlay) "✓  חלון קוד מעל ההגדרות: מאושר" else "אשר הצגת חלון הקוד מעל ההגדרות", overlay) {
+        card.addView(Ui.bumper(this, if (overlay) "חלון קוד מעל ההגדרות: מאושר" else "אשר חלון קוד מעל ההגדרות", overlay) {
             if (!overlay) requestOverlay()
         })
-        panel.addView(Retro.pill(this, if (paired) "✓  צומד – לחץ לצימוד מחדש" else "התחל צימוד", paired) {
+        card.addView(Ui.bumper(this, if (paired) "צומד – לחץ לצימוד מחדש" else "התחל צימוד", paired) {
             startPairing()
         })
-        return panel
+        return card
     }
 
-    private fun bootPanel(): View {
+    private fun bootCard(): View {
         val battery = Starter.isBatteryUnrestricted(this)
-        val panel = Retro.faceplate(this, "כדי שזה יעלה לבד אחרי הדלקה")
+        val card = Ui.card(this, "עלייה אוטומטית אחרי הדלקה", Ui.YELLOW)
         if (Starter.isXiaomi()) {
-            // Green only when the system itself confirms the permission
+            // green only when the system itself confirms the permission
             val auto = Starter.miuiAutostartAllowed(this)
             val label = when (auto) {
-                true -> "✓  הפעלה אוטומטית: מאושרת"
+                true -> "הפעלה אוטומטית: מאושרת"
                 false -> "אשר הפעלה אוטומטית"
                 null -> "אשר הפעלה אוטומטית (לא ניתן לאמת)"
             }
-            panel.addView(Retro.pill(this, label, auto == true) { openXiaomiAutostart() })
+            card.addView(Ui.bumper(this, label, auto == true) { openXiaomiAutostart() })
         }
-        panel.addView(Retro.pill(this, if (battery) "✓  הגבלת סוללה: מבוטלת" else "בטל הגבלת סוללה", battery) {
+        card.addView(Ui.bumper(this, if (battery) "הגבלת סוללה: מבוטלת" else "בטל הגבלת סוללה", battery) {
             if (!battery) {
                 open(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
             } else toast("כבר מבוטל ✓")
         })
-        panel.addView(TextView(this).apply {
-            text = "צריך להיות מחובר ל-WiFi בזמן ההפעלה."
-            textSize = 13f
-            setTextColor(Retro.TEXT_DIM)
-            setPadding(0, dp(10), 0, 0)
+        card.addView(Ui.text(this, "צריך להיות מחובר ל-WiFi בזמן ההפעלה.", 13f, Ui.INK_FAINT).apply {
+            setPadding(0, dp(12), 0, 0)
         })
-        return panel
+        return card
     }
 
-    private fun logPanel(): View {
-        val panel = Retro.faceplate(this, "יומן")
-        panel.addView(TextView(this).apply {
+    private fun logCard(): View {
+        val card = Ui.card(this, "יומן", Ui.INK_FAINT)
+        card.addView(TextView(this).apply {
             text = Starter.readLog(this@MainActivity).ifEmpty { "—" }
             textSize = 12f
             typeface = Typeface.MONOSPACE
-            setTextColor(Retro.TEXT_DIM)
+            setTextColor(Ui.INK_SOFT)
             textDirection = View.TEXT_DIRECTION_RTL
-            background = Retro.rounded(Color.BLACK, Retro.dpf(this@MainActivity, 10f))
-            setPadding(dp(12), dp(10), dp(12), dp(10))
+            background = Ui.rounded(Ui.WELL, Ui.dpf(this@MainActivity, 16f), Ui.SHELL_EDGE, 1)
+            setPadding(dp(14), dp(12), dp(14), dp(12))
         })
-        return panel
+        return card
     }
 
     // ---------- actions ----------
