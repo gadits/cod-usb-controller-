@@ -70,7 +70,7 @@ class PairingService : Service() {
             .setPriority(Notification.PRIORITY_MAX)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
-            .setContentIntent(Notif.openAppIntent(this))
+            // no content intent on purpose: opening the app would close the pairing dialog
 
     /** Notification with the "type pairing code" input. [alert] = pop up on screen again. */
     private fun input(text: String, alert: Boolean): Notification {
@@ -102,7 +102,7 @@ class PairingService : Service() {
     // ---------- flow ----------
 
     private fun begin() {
-        val n = input("פתח 'צימוד מכשיר באמצעות קוד צימוד'. ההתראה תקפוץ – לחץ '$ACTION_LABEL'.", false)
+        val n = input("פתח 'צימוד מכשיר באמצעות קוד צימוד' – ההתראה תקפוץ עם כפתור להקלדת הקוד.", false)
         if (Build.VERSION.SDK_INT >= 34) {
             startForeground(Notif.ID_PAIR, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
@@ -120,7 +120,7 @@ class PairingService : Service() {
                 if (!detectedOnce) Starter.log(this, "חלון הצימוד זוהה")
                 detectedOnce = true
                 // pop up over the Settings dialog, ready for the code
-                post(input("חלון הצימוד זוהה ✓ לחץ '$ACTION_LABEL' והקלד את 6 הספרות.", true))
+                post(input("חלון הצימוד זוהה ✓ לחץ על הכפתור למטה והקלד את 6 הספרות.", true))
             }
         }.also { it.start() }
 

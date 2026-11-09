@@ -338,7 +338,7 @@ def main():
     shot("shade_open")
     btn = None
     for _ in range(3):
-        btn = find(r"הקלד קוד צימוד")
+        btn = find(r"^הקלד קוד צימוד$")
         if btn:
             break
         time.sleep(1)
