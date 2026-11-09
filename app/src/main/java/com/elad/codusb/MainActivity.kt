@@ -182,7 +182,7 @@ class MainActivity : Activity() {
         val devOn = Settings.Global.getInt(contentResolver, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) == 1
         val paired = Starter.isPaired(this)
         val wss = Starter.hasSecureSettings(this)
-        val overlay = Settings.canDrawOverlays(this)
+        val popups = Starter.pairingPopupsAllowed(this)
 
         val card = Ui.card(this, "הגדרה חד-פעמית", Ui.BLUE)
         card.addView(Ui.lightRow(this, devOn, if (devOn) "אפשרויות מפתח פעילות" else "אפשרויות מפתח כבויות"))
@@ -192,9 +192,10 @@ class MainActivity : Activity() {
             card.addView(
                 Ui.text(
                     this,
-                    "לחץ 'התחל צימוד'. באפשרויות מפתח הדלק 'ניפוי באגים אלחוטי' – בחלון שקופץ סמן " +
-                        "'אפשר תמיד ברשת זו' ואשר. אחר כך היכנס אליו ובחר 'צימוד מכשיר באמצעות קוד צימוד'. " +
-                        "תיבת הקוד תיפתח לבד – הקלד בה את 6 הספרות."
+                    "1. לחץ 'התחל צימוד'. באפשרויות מפתח הדלק 'ניפוי באגים אלחוטי' – בחלון שקופץ סמן " +
+                        "'אפשר תמיד ברשת זו' ואשר.\n2. היכנס ל'ניפוי באגים אלחוטי' ובחר 'צימוד מכשיר באמצעות קוד צימוד'.\n" +
+                        "3. תוך שניות תקפוץ למעלה התראה – לחץ בה 'הקלד קוד צימוד' והקלד את 6 הספרות.\n" +
+                        "אל תצא ממסך ההגדרות – יציאה ממנו סוגרת את הקוד."
                 ).apply { setPadding(0, dp(6), 0, 0) }
             )
         }
@@ -204,8 +205,8 @@ class MainActivity : Activity() {
                 toast("לחץ 7 פעמים על 'גרסת MIUI/HyperOS' או 'מספר Build'")
             })
         }
-        card.addView(Ui.bumper(this, if (overlay) "חלון קוד מעל ההגדרות: מאושר" else "אשר חלון קוד מעל ההגדרות", overlay) {
-            if (!overlay) requestOverlay()
+        card.addView(Ui.bumper(this, if (popups) "התראות קופצות לצימוד: מאושרות" else "אשר התראות קופצות לצימוד", popups) {
+            openPairingNotificationSettings()
         })
         card.addView(Ui.bumper(this, if (paired) "צומד – לחץ לצימוד מחדש" else "התחל צימוד", paired) {
             startPairing()
@@ -253,9 +254,12 @@ class MainActivity : Activity() {
 
     // ---------- actions ----------
 
-    private fun requestOverlay() {
-        open(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
-        toast("הפעל 'הצגה מעל אפליקציות אחרות'")
+    private fun openPairingNotificationSettings() {
+        val i = Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+            .putExtra(Settings.EXTRA_CHANNEL_ID, Notif.CH_PAIR)
+        if (!open(i)) open(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
+        toast("הפעל התראות והצגה קופצת (Pop on screen / התראות צפות)")
     }
 
     private fun startPairing() {
@@ -263,21 +267,15 @@ class MainActivity : Activity() {
             toast("צריך להיות מחובר ל-WiFi")
             return
         }
-        if (!Settings.canDrawOverlays(this)) {
-            AlertDialog.Builder(this)
-                .setTitle("צריך אישור אחד")
-                .setMessage(
-                    "תיבת הקלדת הקוד מופיעה מעל מסך ההגדרות.\n" +
-                        "לשם כך יש לאשר 'הצגה מעל אפליקציות אחרות' לאפליקציה, ואז ללחוץ שוב על צימוד."
-                )
-                .setPositiveButton("לאישור") { _, _ -> requestOverlay() }
-                .setNegativeButton("ביטול", null)
-                .show()
-            return
-        }
-        // show the code box now, while we are in the foreground (also needed on Xiaomi)
-        if (!PairingOverlay.show(this)) {
-            toast("לא הצלחתי להציג את תיבת הקוד")
+        if (!Starter.notificationsAllowed(this)) {
+            if (Build.VERSION.SDK_INT >= 33 &&
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
+            } else {
+                openPairingNotificationSettings()
+            }
+            toast("את קוד הצימוד מקלידים בהתראה – צריך לאשר התראות")
             return
         }
         startForegroundService(Intent(this, PairingService::class.java).setAction(PairingService.ACTION_START))

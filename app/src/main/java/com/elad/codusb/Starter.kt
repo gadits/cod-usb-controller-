@@ -71,6 +71,16 @@ object Starter {
         return m.contains("xiaomi") || m.contains("redmi") || m.contains("poco")
     }
 
+    fun notificationsAllowed(ctx: Context): Boolean =
+        ctx.getSystemService(android.app.NotificationManager::class.java).areNotificationsEnabled()
+
+    /** Verified by the system: notifications on and the pairing channel allowed to pop up on screen. */
+    fun pairingPopupsAllowed(ctx: Context): Boolean {
+        val nm = ctx.getSystemService(android.app.NotificationManager::class.java)
+        val ch = nm.getNotificationChannel(Notif.CH_PAIR) ?: return false
+        return nm.areNotificationsEnabled() && ch.importance >= android.app.NotificationManager.IMPORTANCE_HIGH
+    }
+
     fun isBatteryUnrestricted(ctx: Context): Boolean =
         ctx.getSystemService(android.os.PowerManager::class.java).isIgnoringBatteryOptimizations(ctx.packageName)
 

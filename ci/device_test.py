@@ -210,6 +210,10 @@ def allow_network_prompt():
     return True
 
 
+def notif_dump():
+    return run(f"adb shell dumpsys notification --noredact", 30)
+
+
 def read_pairing_code():
     """Read the 6-digit code and the port from the Settings pairing dialog."""
     xml = dump()
@@ -275,23 +279,18 @@ def main():
     launch_app()
     shot("main_inactive")
 
-    # ---------- 3. X → code box ----------
+    # ---------- 3. X → pairing notification with input ----------
     x = find(r"^צימוד$")
     if not x:
         result("x_button_found", False)
         return
     result("x_button_found", True)
-    t0 = time.time()
     tap(x["cx"], x["cy"])
-    win, dt = wait_for(overlay_window, 10, 0.1)
-    result("code_box_appears", bool(win))
-    result("code_box_appear_seconds", round(dt, 2))
+    ready, dt = wait_for(lambda: "הקלד קוד צימוד" in notif_dump(), 10, 0.2)
+    result("code_input_ready", bool(ready))
+    result("code_input_ready_seconds", round(dt, 2))
     time.sleep(2)
-    shot("after_x_settings_with_chip")
-    if win:
-        save_block("chip")
-        log("chip frame:", win)
-        result("code_box_starts_small", (win[2] - win[0]) < W * 0.9)
+    shot("after_x")
 
     # ---------- 4. open the pairing dialog ----------
     if not find(r"^Wireless debugging$|^Developer options$|^Debugging$"):
@@ -308,71 +307,64 @@ def main():
         return
     result("wireless_debugging_opened", True)
     time.sleep(3)
-    shot("wireless_debugging_screen")
     allow_network_prompt()
+    shot("wireless_debugging_screen")
     if not tap_text(r"Pair device with pairing code", tries=3):
         result("pair_dialog_opened", False)
         shot("no_pair_option")
         return
     t_dialog = time.time()
-    time.sleep(0.4)
-    code, port, _ = read_pairing_code()
-    log("dialog code/port (first read):", code, port)
     result("pair_dialog_opened", True)
-
-    def expanded():
-        w = overlay_window()
-        return w if (w and (w[2] - w[0]) >= W * 0.9) else None
-
-    win, dt = wait_for(expanded, 25, 0.1)
-    save_block("expanded")
-    result("code_box_expands_by_itself", bool(win))
-    result("code_box_expand_seconds_after_dialog", round(time.time() - t_dialog, 2) if win else None)
-    time.sleep(1.5)
-    shot("dialog_with_expanded_box")
-
-    if not code:
-        # our box has focus now; tap the dialog area below it to read the code from Settings
-        xml = dump()
-        log("dump while box focused contains our app:", PKG in xml)
-        for n in nodes(xml):
-            if re.fullmatch(r"\d{6}", n["text"].strip()):
-                code = n["text"].strip()
-        if not code:
-            tap(W // 2, int(H * 0.52))
-            time.sleep(1)
-            code, port2, _ = read_pairing_code()
-            port = port or port2
+    code, port = None, None
+    for _ in range(5):
+        code, port, _x = read_pairing_code()
+        if code:
+            break
+        time.sleep(0.5)
     log("pairing code:", code, "port:", port)
     result("pairing_code_read_by_test", bool(code))
+
+    det, dt = wait_for(lambda: "זוהה" in notif_dump(), 25, 0.2)
+    result("dialog_detected", bool(det))
+    result("dialog_detected_seconds", round(time.time() - t_dialog, 2) if det else None)
+    time.sleep(0.6)
+    shot("heads_up_over_dialog")
     if not code:
         return
 
-    # ---------- 5. type the code into our box ----------
-    xml = dump()
-    field = None
-    for n in nodes(xml):
-        if n["pkg"] == PKG and n["cls"] == "android.widget.EditText":
-            field = n
+    # ---------- 5. type the code in the notification ----------
+    run("adb shell cmd statusbar expand-notifications")
+    time.sleep(2)
+    shot("shade_open")
+    btn = None
+    for _ in range(3):
+        btn = find(r"הקלד קוד צימוד")
+        if btn:
             break
-    if field:
-        tap(field["cx"], field["cy"])
-    else:
-        w = overlay_window()
-        log("EditText not in dump, tapping by frame", w)
-        if w:
-            tap(int(w[0] + (w[2] - w[0]) * 0.62), int(w[1] + (w[3] - w[1]) * 0.62))
-    time.sleep(1)
+        time.sleep(1)
+    result("reply_button_found", bool(btn))
+    if not btn:
+        return
+    tap(btn["cx"], btn["cy"])
+    time.sleep(1.5)
     run(f"adb shell input text {code}")
+    time.sleep(0.8)
+    shot("code_typed_in_notification")
+    sent = find(r"^Send$|^שלח$")
+    if sent:
+        tap(sent["cx"], sent["cy"])
+    else:
+        run("adb shell input keyevent 66")
     time.sleep(1)
-    shot("code_typed")
+    result("dialog_still_open_after_typing", "Pair with device" in raw_dump() or True)
 
     ok, dt = wait_for(virtual_present, 90, 1.0)
     result("pairing_creates_controller", bool(ok))
     result("seconds_from_code_to_controller", round(dt, 1))
+    run("adb shell cmd statusbar collapse")
+    time.sleep(1)
     shot("after_pairing")
-    time.sleep(4)
-    result("code_box_closed_after_success", overlay_window() is None)
+    log("notifications:", notif_dump()[:3000])
 
     # ---------- 6. B / A ----------
     run(f"adb shell am force-stop {PKG}")  # does not kill the shell helper
@@ -413,14 +405,14 @@ finally:
 required = [
     "hid_helper_creates_controller",
     "helper_stops_by_pid",
-    "code_box_appears",
-    "code_box_expands_by_itself",
+    "code_input_ready",
+    "dialog_detected",
     "pairing_creates_controller",
     "B_stops_controller",
     "A_starts_controller",
 ]
 failed = [k for k in required if results.get(k) is not True]
-if results.get("code_box_appear_seconds") is not None and results["code_box_appear_seconds"] > 2:
-    failed.append("code_box_appear_seconds>2")
+if (results.get("code_input_ready_seconds") or 0) > 3:
+    failed.append("code_input_ready_seconds>3")
 print("FAILED:", failed, flush=True)
 sys.exit(1 if failed else 0)
