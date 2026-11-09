@@ -53,7 +53,7 @@ object Starter {
     /** Real game controllers that Android currently sees (excluding ours). */
     fun realGamepads(ctx: Context): List<String> {
         val im = ctx.getSystemService(InputManager::class.java)
-        return im.inputDeviceIds.mapNotNull { id ->
+        return im.inputDeviceIds.toList().mapNotNull { id ->
             val d = im.getInputDevice(id) ?: return@mapNotNull null
             val pad = (d.sources and InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD ||
                 (d.sources and InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK
