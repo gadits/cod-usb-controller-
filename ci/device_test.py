@@ -75,6 +75,13 @@ def dismiss_system_dialogs(xml=None):
     return False
 
 
+def raw_shot(name):
+    shot_n[0] += 1
+    fn = f"{OUT}/{shot_n[0]:02d}_{name}.png"
+    run(f"adb exec-out screencap -p > {fn}")
+    log("screenshot", fn)
+
+
 def dump():
     xml = raw_dump()
     for _ in range(3):
@@ -281,8 +288,15 @@ def main():
     shot("main_inactive")
 
     # ---------- 3. automatic pairing: press X, type nothing ----------
-    run(f"adb shell settings put secure enabled_accessibility_services {PKG}/{PKG}.PairingAccessibility")
-    run("adb shell settings put secure accessibility_enabled 1")
+    # One-time network approval first (a real user taps "Always allow" once). The test reads the
+    # screen with uiautomator, which switches other accessibility services off while it runs,
+    # so all screen reading happens BEFORE the automatic phase.
+    run("adb shell settings put global adb_wifi_enabled 1")
+    time.sleep(3)
+    for _ in range(3):
+        if allow_network_prompt():
+            break
+        time.sleep(1)
     run("adb shell settings put global adb_wifi_enabled 0")
     time.sleep(2)
     run(f"adb shell am force-stop {PKG}")
@@ -293,6 +307,13 @@ def main():
         result("x_button_found", False)
         return
     result("x_button_found", True)
+    # (re)enable our accessibility helper only now — no more uiautomator from here on
+    run("adb shell settings put secure enabled_accessibility_services null")
+    time.sleep(1)
+    run(f"adb shell settings put secure enabled_accessibility_services {PKG}/{PKG}.PairingAccessibility")
+    run("adb shell settings put secure accessibility_enabled 1")
+    time.sleep(3)
+    log("a11y bound:", "PairingAccessibility" in run("adb shell dumpsys accessibility", 30))
     t0 = time.time()
     tap(x["cx"], x["cy"])
     ready, _ = wait_for(lambda: f"pkg={PKG} user=UserHandle{{0}} id=10 " in notif_dump(), 10, 0.3)
@@ -304,20 +325,17 @@ def main():
     while time.time() - t0 < 120:
         el = time.time() - t0
         if shots_at and el >= shots_at[0]:
-            shot(f"auto_t{shots_at.pop(0)}s")
+            raw_shot(f"auto_t{shots_at.pop(0)}s")
         if virtual_present():
             ok = True
             break
-        # the only thing the user does: allow wireless debugging on this network
-        if allow_network_prompt():
-            prompts += 1
         time.sleep(1)
     dt = time.time() - t0
     result("network_prompts_answered", prompts)
     result("auto_pairing_creates_controller", ok)
     result("auto_pairing_seconds_from_X", round(dt, 1))
     time.sleep(2)
-    shot("after_auto_pairing")
+    raw_shot("after_auto_pairing")
     log("helper log:", run("adb shell cat /data/local/tmp/codusb_hid.log"))
     log("notifications:", notif_dump()[:2500])
 
