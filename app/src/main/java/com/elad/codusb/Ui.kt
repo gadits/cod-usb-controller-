@@ -99,6 +99,9 @@ object Ui {
             elevation = dpf(ctx, 12f)
             outlineProvider = ViewOutlineProvider.BACKGROUND
             outlineSpotShadowColor = Color.BLACK
+            // let the buttons' shadows show fully instead of being cut off square
+            clipToPadding = false
+            clipChildren = false
             setPadding(dp(ctx, 20), dp(ctx, 18), dp(ctx, 20), dp(ctx, 20))
         }
         if (title != null) {
