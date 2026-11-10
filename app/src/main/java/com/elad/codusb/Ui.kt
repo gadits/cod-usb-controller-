@@ -96,8 +96,9 @@ object Ui {
                     ).apply { cornerRadius = dpf(ctx, 26f) }
                 )
             ).apply { setLayerInset(1, dp(ctx, 2), dp(ctx, 2), dp(ctx, 2), dp(ctx, 60)) }
-            elevation = dpf(ctx, 10f)
+            elevation = dpf(ctx, 12f)
             outlineProvider = ViewOutlineProvider.BACKGROUND
+            outlineSpotShadowColor = Color.BLACK
             setPadding(dp(ctx, 20), dp(ctx, 18), dp(ctx, 20), dp(ctx, 20))
         }
         if (title != null) {
@@ -128,38 +129,56 @@ object Ui {
             setLineSpacing(0f, 1.15f)
         }
 
-    /** Shoulder-bumper style button. Turns green with a check only when [done] is true. */
+    /**
+     * Raised 3D button: a darker base ("thickness") under a lit face with a gloss.
+     * Pressing pushes the face down onto the base. Turns green only when [done] is true.
+     */
     fun bumper(ctx: Context, label: String, done: Boolean = false, onClick: () -> Unit): TextView =
         TextView(ctx).apply {
             text = if (done) "✓  $label" else label
             textSize = 15.5f
-            typeface = MEDIUM
+            typeface = BOLD
             gravity = Gravity.CENTER
-            setPadding(dp(ctx, 18), 0, dp(ctx, 18), 0)
+            val lip = dp(ctx, 6)
+            setPadding(dp(ctx, 18), 0, dp(ctx, 18), lip)
             isClickable = true
             isFocusable = true
-            val r = dpf(ctx, 18f)
-            background = if (done) pressable(
-                LayerDrawable(
-                    arrayOf(
-                        vertical(Color.parseColor("#3FCF5E"), GREEN_DEEP, r, Color.parseColor("#0B6A1A"), 1),
-                        vertical(Color.argb(90, 255, 255, 255), Color.argb(0, 255, 255, 255), r)
-                    )
-                ).apply { setLayerInset(1, 1, 1, 1, dp(ctx, 26)) },
-                vertical(GREEN_DEEP, Color.parseColor("#0A5E17"), r)
-            ) else pressable(
-                LayerDrawable(
-                    arrayOf(
-                        vertical(Color.WHITE, Color.parseColor("#E3E6E9"), r, SHELL_EDGE, dp(ctx, 1)),
-                        vertical(Color.argb(200, 255, 255, 255), Color.argb(0, 255, 255, 255), r)
-                    )
-                ).apply { setLayerInset(1, 2, 2, 2, dp(ctx, 26)) },
-                vertical(Color.parseColor("#E1E4E7"), Color.parseColor("#F3F4F6"), r, SHELL_EDGE, dp(ctx, 1))
-            )
+            val r = dpf(ctx, 20f)
+            val baseColor: Int
+            val faceTop: Int
+            val faceBottom: Int
+            val edge: Int
+            if (done) {
+                baseColor = Color.parseColor("#075314"); faceTop = Color.parseColor("#4CD86A")
+                faceBottom = Color.parseColor("#129330"); edge = Color.parseColor("#0B6A1A")
+            } else {
+                baseColor = Color.parseColor("#B4BAC1"); faceTop = Color.WHITE
+                faceBottom = Color.parseColor("#E2E6EA"); edge = Color.parseColor("#CDD2D7")
+            }
+            val normal = LayerDrawable(
+                arrayOf(
+                    rounded(baseColor, r),
+                    vertical(faceTop, faceBottom, r, edge, dp(ctx, 1)),
+                    vertical(Color.argb(if (done) 110 else 230, 255, 255, 255), Color.argb(0, 255, 255, 255), r)
+                )
+            ).apply {
+                setLayerInset(1, 0, 0, 0, lip)
+                setLayerInset(2, dp(ctx, 3), dp(ctx, 2), dp(ctx, 3), lip + dp(ctx, 22))
+            }
+            val pressed = LayerDrawable(
+                arrayOf(
+                    rounded(baseColor, r),
+                    vertical(faceBottom, faceTop, r, edge, dp(ctx, 1))
+                )
+            ).apply { setLayerInset(1, 0, lip - dp(ctx, 2), 0, dp(ctx, 1)) }
+            background = pressable(normal, pressed)
             setTextColor(if (done) Color.WHITE else INK)
-            elevation = dpf(ctx, 5f)
+            if (done) setShadowLayer(dpf(ctx, 2f), 0f, dpf(ctx, 1f), Color.argb(110, 0, 0, 0))
+            elevation = dpf(ctx, 9f)
             outlineProvider = ViewOutlineProvider.BACKGROUND
-            layoutParams = LinearLayout.LayoutParams(-1, dp(ctx, 54)).apply { topMargin = dp(ctx, 12) }
+            outlineSpotShadowColor = Color.BLACK
+            outlineAmbientShadowColor = Color.BLACK
+            layoutParams = LinearLayout.LayoutParams(-1, dp(ctx, 60)).apply { topMargin = dp(ctx, 12) }
             setOnClickListener { onClick() }
             pushEffect(this)
         }
@@ -187,9 +206,11 @@ object Ui {
                 ).apply { shape = GradientDrawable.OVAL }
             )
         ).apply {
+            // thin rim on top, thick at the bottom: the button's body shows below its dome
             val rim = dp(ctx, 4)
-            setLayerInset(1, rim, rim, rim, rim)
-            setLayerInset(2, size / 5, rim + dp(ctx, 2), size / 5, size / 2)
+            val body = dp(ctx, 9)
+            setLayerInset(1, rim, rim - dp(ctx, 1), rim, body)
+            setLayerInset(2, size / 5, rim + dp(ctx, 2), size / 5, size / 2 + dp(ctx, 4))
         }
         val pressedCap = LayerDrawable(
             arrayOf(
@@ -202,14 +223,17 @@ object Ui {
                     colors = intArrayOf(color, deep)
                 }
             )
-        ).apply { val rim = dp(ctx, 5); setLayerInset(1, rim, rim, rim, rim) }
+        ).apply { val rim = dp(ctx, 4); setLayerInset(1, rim, dp(ctx, 7), rim, dp(ctx, 4)) }
 
         val btn = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             background = pressable(cap, pressedCap)
             isClickable = true
-            elevation = dpf(ctx, 12f)
+            elevation = dpf(ctx, 16f)
+            outlineSpotShadowColor = Color.BLACK
+            outlineAmbientShadowColor = Color.BLACK
+            setPadding(0, 0, 0, dp(ctx, 5))
             outlineProvider = object : ViewOutlineProvider() {
                 override fun getOutline(view: View, outline: Outline) = outline.setOval(0, 0, view.width, view.height)
             }
@@ -275,9 +299,9 @@ object Ui {
     }
 
     /** Glowing round "guide" button showing whether the virtual controller is on. */
-    fun statusOrb(ctx: Context, on: Boolean, label: String): View {
+    fun statusOrb(ctx: Context, on: Boolean, label: String, glowColor: Int? = null): View {
         val size = dp(ctx, 150)
-        val glow = if (on) GREEN else OFF
+        val glow = glowColor ?: if (on) GREEN else OFF
         val orb = FrameLayout(ctx)
         orb.addView(View(ctx).apply {
             background = GradientDrawable().apply {
@@ -293,12 +317,12 @@ object Ui {
             textSize = 17f
             typeface = BLACK
             gravity = Gravity.CENTER
-            setTextColor(if (on) GREEN_DEEP else INK_FAINT)
+            setTextColor(if (on) darken(glow) else INK_FAINT)
             background = LayerDrawable(
                 arrayOf(
                     GradientDrawable().apply {
                         shape = GradientDrawable.OVAL
-                        setColor(if (on) Color.parseColor("#7BE38F") else Color.parseColor("#C9CDD2"))
+                        setColor(if (on) lighten(glow, 0.35f) else Color.parseColor("#C9CDD2"))
                     },
                     GradientDrawable().apply {
                         shape = GradientDrawable.OVAL
@@ -340,6 +364,10 @@ object Ui {
         }, LinearLayout.LayoutParams(dp(ctx, 20), dp(ctx, 20)).apply { marginEnd = dp(ctx, 10) })
         addView(text(ctx, label, 15f, INK, MEDIUM))
     }
+
+    fun darken(color: Int): Int = Color.rgb(
+        (Color.red(color) * 0.55f).toInt(), (Color.green(color) * 0.55f).toInt(), (Color.blue(color) * 0.55f).toInt()
+    )
 
     fun lighten(color: Int, f: Float): Int = Color.rgb(
         (Color.red(color) + (255 - Color.red(color)) * f).toInt(),

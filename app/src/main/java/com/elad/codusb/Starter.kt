@@ -54,16 +54,46 @@ object Starter {
         }
     }
 
+    private val PAD_WORDS = Regex("controller|gamepad|game ?pad|joystick|joypad|xbox|x-box|easysmx|memo|gamesir|8bitdo", RegexOption.IGNORE_CASE)
+
+    private fun isOurs(d: InputDevice) = d.vendorId == VIRTUAL_VID && d.productId == VIRTUAL_PID
+
+    /** A real controller: reports gamepad/joystick/d-pad input, or is an external device with a controller-like name. */
+    private fun isRealPad(d: InputDevice): Boolean {
+        if (isOurs(d) || d.isVirtual) return false
+        val s = d.sources
+        val padSource = (s and InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD ||
+            (s and InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK
+        val dpadExternal = d.isExternal && (s and InputDevice.SOURCE_DPAD) == InputDevice.SOURCE_DPAD
+        val namedExternal = d.isExternal && PAD_WORDS.containsMatchIn(d.name ?: "")
+        return padSource || dpadExternal || namedExternal
+    }
+
     /** Real game controllers that Android currently sees (excluding ours). */
     fun realGamepads(ctx: Context): List<String> {
         val im = ctx.getSystemService(InputManager::class.java)
         return im.inputDeviceIds.toList().mapNotNull { id ->
             val d = im.getInputDevice(id) ?: return@mapNotNull null
-            val pad = (d.sources and InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD ||
-                (d.sources and InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK
-            val ours = d.vendorId == VIRTUAL_VID && d.productId == VIRTUAL_PID
-            if (pad && !ours) d.name else null
+            if (isRealPad(d)) d.name else null
         }.distinct()
+    }
+
+    /** One line per external input device, for the log (helps when a controller isn't recognised). */
+    fun describeExternalDevices(ctx: Context): String {
+        val im = ctx.getSystemService(InputManager::class.java)
+        return im.inputDeviceIds.toList().mapNotNull { id ->
+            val d = im.getInputDevice(id) ?: return@mapNotNull null
+            if (!d.isExternal || isOurs(d)) return@mapNotNull null
+            "${d.name} [%04x:%04x, sources=0x%x]".format(d.vendorId, d.productId, d.sources)
+        }.distinct().joinToString(" | ").ifEmpty { "אין התקנים חיצוניים" }
+    }
+
+    fun describeDevice(d: InputDevice): String =
+        "${d.name} [%04x:%04x, sources=0x%x]".format(d.vendorId, d.productId, d.sources)
+
+    fun isRealPadId(ctx: Context, id: Int): Boolean {
+        val d = ctx.getSystemService(InputManager::class.java).getInputDevice(id) ?: return false
+        return isRealPad(d)
     }
 
     fun isXiaomi(): Boolean {

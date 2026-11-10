@@ -38,9 +38,38 @@ class MainActivity : Activity() {
     }
 
     private val deviceListener = object : InputManager.InputDeviceListener {
-        override fun onInputDeviceAdded(deviceId: Int) = render()
+        override fun onInputDeviceAdded(deviceId: Int) {
+            val d = getSystemService(InputManager::class.java).getInputDevice(deviceId)
+            if (d != null && d.isExternal && Starter.isRealPadId(this@MainActivity, deviceId)) {
+                Starter.log(this@MainActivity, "שלט חובר: ${Starter.describeDevice(d)}")
+                autoStartForController()
+            } else if (d != null && d.isExternal && !Starter.isVirtualPresent(this@MainActivity)) {
+                Starter.log(this@MainActivity, "התקן חובר (לא זוהה כשלט): ${Starter.describeDevice(d)}")
+            }
+            render()
+        }
+
         override fun onInputDeviceRemoved(deviceId: Int) = render()
         override fun onInputDeviceChanged(deviceId: Int) {}
+    }
+
+    /** A controller was plugged in: switch the virtual controller on if it isn't already. */
+    private fun autoStartForController() {
+        if (Starter.isPaired(this) && !Starter.isVirtualPresent(this)) {
+            Starter.prefs(this).edit().putBoolean("manual_off", false).apply()
+            Starter.log(this, "מפעיל את השלט הווירטואלי אוטומטית")
+            startForegroundService(Intent(this, StartService::class.java))
+        }
+    }
+
+    /** Write the list of connected external devices to the log when it changes. */
+    private fun logDevicesIfChanged() {
+        val now = Starter.describeExternalDevices(this)
+        val p = Starter.prefs(this)
+        if (p.getString("last_devices", null) != now) {
+            p.edit().putString("last_devices", now).apply()
+            Starter.log(this, "התקנים מחוברים: $now")
+        }
     }
 
     private fun dp(v: Int) = Ui.dp(this, v)
@@ -82,6 +111,11 @@ class MainActivity : Activity() {
         super.onResume()
         registerReceiver(doneReceiver, IntentFilter(StartService.ACTION_DONE), Context.RECEIVER_NOT_EXPORTED)
         getSystemService(InputManager::class.java).registerInputDeviceListener(deviceListener, handler)
+        logDevicesIfChanged()
+        // controller already plugged in when the app opens → switch on (unless the user turned it off with B)
+        if (Starter.realGamepads(this).isNotEmpty() && !Starter.prefs(this).getBoolean("manual_off", false)) {
+            autoStartForController()
+        }
         render()
     }
 
@@ -139,25 +173,36 @@ class MainActivity : Activity() {
         val pads = Starter.realGamepads(this)
         val card = Ui.card(this, null)
         card.gravity = Gravity.CENTER_HORIZONTAL
-        card.addView(Ui.statusOrb(this, active, if (active) "פעיל" else "כבוי"))
+
+        // the orb sums it all up: ready / plug in a controller / off
+        val (label, glow, line) = when {
+            active && pads.isNotEmpty() -> Triple("מוכן!", Ui.GREEN, "הכל מוכן – אפשר לשחק")
+            active -> Triple("חבר שלט", Ui.YELLOW, "השלט הווירטואלי פעיל – חבר שלט USB")
+            pads.isNotEmpty() -> Triple("כבוי", Ui.RED, "השלט מחובר – לחץ A להפעלה")
+            else -> Triple("כבוי", Ui.OFF, "השלט הווירטואלי כבוי")
+        }
+        card.addView(Ui.statusOrb(this, active || pads.isNotEmpty(), label, glow))
         card.addView(TextView(this).apply {
-            text = if (active) "השלט הווירטואלי פעיל – אפשר לשחק" else "השלט הווירטואלי כבוי"
+            text = line
             textSize = 18f
             typeface = Ui.BOLD
             gravity = Gravity.CENTER
-            setTextColor(if (active) Ui.GREEN_DEEP else Ui.INK)
-            setPadding(0, dp(4), 0, dp(10))
+            setTextColor(Ui.INK)
+            setPadding(0, dp(4), 0, dp(8))
         })
-        // chip with the controllers Android sees right now
-        card.addView(TextView(this).apply {
-            text = if (pads.isEmpty()) "לא מחובר שלט כרגע" else "מחובר: " + pads.joinToString(" · ")
-            textSize = 13.5f
-            typeface = Ui.MEDIUM
-            gravity = Gravity.CENTER
-            setTextColor(Ui.INK_SOFT)
-            background = Ui.rounded(Ui.WELL, Ui.dpf(this@MainActivity, 14f), Ui.SHELL_EDGE, 1)
-            setPadding(dp(14), dp(7), dp(14), dp(7))
-        }, LinearLayout.LayoutParams(-2, -2).apply { gravity = Gravity.CENTER_HORIZONTAL })
+        val rows = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = Ui.rounded(Ui.WELL, Ui.dpf(this@MainActivity, 16f), Ui.SHELL_EDGE, 1)
+            setPadding(dp(14), dp(6), dp(14), dp(6))
+        }
+        rows.addView(Ui.lightRow(this, active, if (active) "שלט וירטואלי: פעיל" else "שלט וירטואלי: כבוי"))
+        rows.addView(
+            Ui.lightRow(
+                this, pads.isNotEmpty(),
+                if (pads.isEmpty()) "שלט USB: לא מחובר" else "שלט USB: " + pads.joinToString(" · ")
+            )
+        )
+        card.addView(rows, LinearLayout.LayoutParams(-1, -2))
         return card
     }
 
@@ -165,10 +210,12 @@ class MainActivity : Activity() {
         val card = Ui.card(this, "שליטה")
         val size = 86
         val a = Ui.faceButton(this, "A", "הפעל", Ui.GREEN, Ui.GREEN_DEEP, size) {
+            Starter.prefs(this).edit().putBoolean("manual_off", false).apply()
             startForegroundService(Intent(this, StartService::class.java))
             toast("מפעיל... התוצאה תופיע בהתראה")
         }
         val b = Ui.faceButton(this, "B", "כבה", Ui.RED, Ui.RED_DEEP, size) {
+            Starter.prefs(this).edit().putBoolean("manual_off", true).apply()
             startForegroundService(Intent(this, StartService::class.java).setAction(StartService.ACTION_STOP))
             toast("מכבה...")
         }
