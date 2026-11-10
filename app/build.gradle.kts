@@ -67,6 +67,8 @@ dependencies {
     implementation("com.github.MuntashirAkon:libadb-android:3.1.1")
     implementation("org.conscrypt:conscrypt-android:2.5.3")
     implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
+    // On-device text recognition, used to read the pairing code from the screen (works offline)
+    implementation("com.google.mlkit:text-recognition:16.0.1")
     // Self-signed certificate for the ADB key
     implementation("org.bouncycastle:bcpkix-jdk15to18:1.81")
 }

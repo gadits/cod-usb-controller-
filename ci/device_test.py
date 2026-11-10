@@ -388,8 +388,43 @@ def main():
         log("pairing screen frame:", frame)
         run("adb shell cmd statusbar collapse")
         time.sleep(1)
-        field = None
+        # --- first: read the code from the screen (nothing typed) ---
+        read_ok = False
         if frame:
+            tap((frame[0] + frame[2]) // 2, frame[1] + 40)   # focus our half
+            time.sleep(1.2)
+            btn = None
+            for _ in range(4):
+                btn = find(r"קרא את הקוד מהמסך")
+                if btn:
+                    break
+                run(f"adb shell input swipe {W // 2} {int(frame[3] * 0.8)} {W // 2} {int(frame[3] * 0.3)} 300")
+                time.sleep(1)
+            result("read_button_found", bool(btn))
+            if btn:
+                t_read = time.time()
+                tap(btn["cx"], btn["cy"])
+                time.sleep(2)
+                shot("capture_consent")
+                for _ in range(3):
+                    c = find(r"^(Start|Start now|Next|Start recording|Share screen)$")
+                    if not c:
+                        break
+                    log("consent button:", c["text"])
+                    tap(c["cx"], c["cy"])
+                    time.sleep(2)
+                shot("after_consent")
+                read_ok, dt = wait_for(virtual_present, 60, 1.0)
+                result("screen_read_pairs", bool(read_ok))
+                result("screen_read_seconds", round(time.time() - t_read, 1))
+                if read_ok:
+                    result("pairing_creates_controller", True)
+                    result("paired_via", "screen_read")
+                    time.sleep(2)
+                    shot("after_pairing")
+                    SPLIT[0] = False
+        field = None
+        if frame and not read_ok:
             # the code box sits at about 40% of our half's height
             tap((frame[0] + frame[2]) // 2, frame[1] + int((frame[3] - frame[1]) * 0.40))
             time.sleep(1.2)
@@ -397,9 +432,12 @@ def main():
                 if n["pkg"] == PKG and n["cls"] == "android.widget.EditText":
                     field = n
                     break
-        result("code_box_found_in_split", bool(field))
-        shot("code_box_focused")
-        if field:
+        if not read_ok:
+            result("code_box_found_in_split", bool(field))
+            shot("code_box_focused")
+        if read_ok:
+            return_after_split = True
+        elif field:
             tap(field["cx"], field["cy"])
             time.sleep(1)
             run(f"adb shell input text {code}")
@@ -497,6 +535,7 @@ required = [
     "code_input_ready",
     "dialog_detected",
     "pairing_creates_controller",
+    "screen_read_pairs",
     "B_stops_controller",
     "A_starts_controller",
 ]

@@ -12,6 +12,7 @@ object Notif {
     const val ID_PAIR = 10
     const val ID_START = 11
     const val ID_RESULT = 12
+    const val ID_CAPTURE = 13
 
     fun openAppIntent(ctx: Context): PendingIntent = PendingIntent.getActivity(
         ctx, 0, Intent(ctx, MainActivity::class.java),

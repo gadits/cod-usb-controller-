@@ -50,9 +50,10 @@ class PairingService : Service() {
             }
             ACTION_CODE -> {
                 val code = intent.getStringExtra(EXTRA_CODE) ?: ""
+                val port = intent.getIntExtra(EXTRA_PORT, 0)
                 if (!busy) {
                     busy = true
-                    thread(name = "codusb-pair") { pair(code) }
+                    thread(name = "codusb-pair") { pair(if (port > 0) "$code $port" else code) }
                 }
             }
             ACTION_STOP -> finish(null)
@@ -286,6 +287,7 @@ class PairingService : Service() {
         const val ACTION_STOP = "com.elad.codusb.PAIR_STOP"
         const val ACTION_CODE = "com.elad.codusb.PAIR_CODE"
         const val EXTRA_CODE = "code"
+        const val EXTRA_PORT = "port"
         const val KEY_CODE = "code"
         const val ACTION_LABEL = "הקלד קוד צימוד"
     }

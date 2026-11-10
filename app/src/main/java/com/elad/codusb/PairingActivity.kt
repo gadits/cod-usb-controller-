@@ -31,6 +31,10 @@ import android.widget.TextView
  */
 class PairingActivity : Activity() {
 
+    companion object {
+        private const val REQ_CAPTURE = 7
+    }
+
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var status: TextView
     private lateinit var dot: View
@@ -41,7 +45,46 @@ class PairingActivity : Activity() {
         handler.post { show(text, kind) }
     }
 
+    private val codeListener: (String, Int) -> Unit = { c, port ->
+        handler.post {
+            readPort = port
+            code.setText(c) // 6 digits → submits by itself
+        }
+    }
+    private var readPort = 0
+
     private fun dp(v: Int) = Ui.dp(this, v)
+
+    private fun readFromScreen() {
+        val mpm = getSystemService(android.media.projection.MediaProjectionManager::class.java)
+        val i = if (android.os.Build.VERSION.SDK_INT >= 34)
+            mpm.createScreenCaptureIntent(android.media.projection.MediaProjectionConfig.createConfigForDefaultDisplay())
+        else mpm.createScreenCaptureIntent()
+        show("אשר את צילום המסך...", PairingUi.Kind.BUSY)
+        try {
+            @Suppress("DEPRECATION")
+            startActivityForResult(i, REQ_CAPTURE)
+        } catch (t: Throwable) {
+            show("צילום מסך לא זמין במכשיר – הקלד את הקוד", PairingUi.Kind.ERROR)
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQ_CAPTURE) return
+        if (resultCode != RESULT_OK || data == null) {
+            show("צילום המסך בוטל – אפשר להקליד את הקוד", PairingUi.Kind.INFO)
+            return
+        }
+        show("קורא את הקוד מהמסך...", PairingUi.Kind.BUSY)
+        startForegroundService(
+            Intent(this, CaptureService::class.java)
+                .putExtra(CaptureService.EXTRA_RESULT, resultCode)
+                .putExtra(CaptureService.EXTRA_DATA, data)
+        )
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -93,6 +136,13 @@ class PairingActivity : Activity() {
         }
         card.addView(code, LinearLayout.LayoutParams(-1, -2))
         card.addView(Ui.bumper(this, "צמד", true) { submit() })
+        card.addView(Ui.bumper(this, "📷  קרא את הקוד מהמסך") { readFromScreen() })
+        card.addView(Ui.text(
+            this,
+            "בלי להקליד: פתח קודם את חלון הצימוד בהגדרות, ואז לחץ כאן. אנדרואיד ישאל אם לאשר צילום מסך – אשר. " +
+                "האפליקציה תצלם תמונה אחת, תזהה את הקוד ותצמד לבד. התמונה לא נשמרת ולא נשלחת לשום מקום.",
+            12.5f, Ui.INK_FAINT
+        ).apply { setPadding(dp(4), dp(8), dp(4), 0) })
         card.addView(Ui.bumper(this, "ביטול") {
             startService(Intent(this, PairingService::class.java).setAction(PairingService.ACTION_STOP))
             finish()
@@ -107,6 +157,7 @@ class PairingActivity : Activity() {
         })
 
         PairingUi.listener = listener
+        PairingUi.codeListener = codeListener
         val last = PairingUi.last
         if (savedInstanceState != null && last != null) {
             // recreated (e.g. by the system): just show where we are, don't start over
@@ -119,6 +170,7 @@ class PairingActivity : Activity() {
     }
 
     override fun onDestroy() {
+        if (PairingUi.codeListener === codeListener) PairingUi.codeListener = null
         if (PairingUi.listener === listener) {
             PairingUi.listener = null
             PairingUi.inSplit = false
@@ -189,7 +241,9 @@ class PairingActivity : Activity() {
             Intent(this, PairingService::class.java)
                 .setAction(PairingService.ACTION_CODE)
                 .putExtra(PairingService.EXTRA_CODE, c)
+                .putExtra(PairingService.EXTRA_PORT, readPort)
         )
+        readPort = 0
     }
 
     private fun show(text: String, kind: PairingUi.Kind) {
@@ -236,5 +290,13 @@ object PairingUi {
     fun update(text: String, kind: Kind) {
         last = text to kind
         listener?.invoke(text, kind)
+    }
+
+    /** The code was read from the screen. */
+    @Volatile
+    var codeListener: ((String, Int) -> Unit)? = null
+
+    fun codeRead(code: String, port: Int) {
+        codeListener?.invoke(code, port)
     }
 }
