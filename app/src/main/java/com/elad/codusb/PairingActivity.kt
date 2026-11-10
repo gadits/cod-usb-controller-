@@ -119,13 +119,22 @@ class PairingActivity : Activity() {
     }
 
     override fun onDestroy() {
-        if (PairingUi.listener === listener) PairingUi.listener = null
+        if (PairingUi.listener === listener) {
+            PairingUi.listener = null
+            PairingUi.inSplit = false
+        }
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
 
+    override fun onResume() {
+        super.onResume()
+        PairingUi.inSplit = isInMultiWindowMode
+    }
+
     override fun onMultiWindowModeChanged(isInMultiWindowMode: Boolean) {
         super.onMultiWindowModeChanged(isInMultiWindowMode)
+        PairingUi.inSplit = isInMultiWindowMode
         if (isInMultiWindowMode && !submitted) {
             show("בחר בהגדרות 'צימוד מכשיר באמצעות קוד צימוד' והקלד כאן את 6 הספרות", PairingUi.Kind.INFO)
         }
@@ -216,6 +225,10 @@ object PairingUi {
 
     @Volatile
     var done = false
+
+    /** The pairing screen is beside Settings: no need to pop the notification over it. */
+    @Volatile
+    var inSplit = false
 
     @Volatile
     var last: Pair<String, Kind>? = null

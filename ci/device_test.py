@@ -386,15 +386,19 @@ def main():
     if split:
         frame = window_frame("com.elad.codusb.PairingActivity")
         log("pairing screen frame:", frame)
-        if frame:
-            tap((frame[0] + frame[2]) // 2, frame[1] + 60)   # focus our half (its top area)
-            time.sleep(1)
+        run("adb shell cmd statusbar collapse")
+        time.sleep(1)
         field = None
-        for n in nodes(raw_dump()):
-            if n["pkg"] == PKG and n["cls"] == "android.widget.EditText":
-                field = n
-                break
+        if frame:
+            # the code box sits at about 40% of our half's height
+            tap((frame[0] + frame[2]) // 2, frame[1] + int((frame[3] - frame[1]) * 0.40))
+            time.sleep(1.2)
+            for n in nodes(raw_dump()):
+                if n["pkg"] == PKG and n["cls"] == "android.widget.EditText":
+                    field = n
+                    break
         result("code_box_found_in_split", bool(field))
+        shot("code_box_focused")
         if field:
             tap(field["cx"], field["cy"])
             time.sleep(1)

@@ -152,7 +152,8 @@ class PairingService : Service() {
                 detectedOnce = true
                 PairingUi.update("חלון הצימוד זוהה ✓ הקלד כאן את 6 הספרות", PairingUi.Kind.OK)
                 // pop up over the Settings dialog, ready for the code
-                post(input("הקלד כאן את קוד הצימוד", "הזן את הקוד בן 6 הספרות המוצג בחלון הצימוד", true))
+                // pop up over the dialog — unless the code box is already on screen (split screen)
+                post(input("הקלד כאן את קוד הצימוד", "הזן את הקוד בן 6 הספרות המוצג בחלון הצימוד", !PairingUi.inSplit))
             }
         }.also { it.start() }
 
