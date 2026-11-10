@@ -295,7 +295,7 @@ def main():
     result("x_button_found", True)
     t0 = time.time()
     tap(x["cx"], x["cy"])
-    ready, _ = wait_for(lambda: "צימוד אוטומטי" in notif_dump(), 10, 0.3)
+    ready, _ = wait_for(lambda: f"pkg={PKG} user=UserHandle{{0}} id=10 " in notif_dump(), 10, 0.3)
     result("code_input_ready", bool(ready))
 
     ok = False

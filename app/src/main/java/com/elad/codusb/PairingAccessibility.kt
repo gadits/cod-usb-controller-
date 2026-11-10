@@ -24,10 +24,13 @@ class PairingAccessibility : AccessibilityService() {
     private var lastWirelessClick = 0L
     private var lastPairClick = 0L
     private var lastToggleClick = 0L
+    private var lastScroll = 0L
+    private var scrolls = 0
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (!PairingService.running) {
             lastCode = null
+            scrolls = 0
             return
         }
         val roots = try {
@@ -89,6 +92,26 @@ class PairingAccessibility : AccessibilityService() {
                 return
             }
         }
+        // 4. not visible yet: scroll the Developer options list down to it
+        if (now - lastScroll > 600 && scrolls < 40) {
+            for (root in roots) {
+                val list = findScrollable(root)
+                if (list != null) {
+                    if (list.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)) {
+                        scrolls++
+                        lastScroll = now
+                    }
+                    return
+                }
+            }
+        }
+    }
+
+    private fun findScrollable(n: AccessibilityNodeInfo?, depth: Int = 0): AccessibilityNodeInfo? {
+        if (n == null || depth > 40) return null
+        if (n.isScrollable) return n
+        for (i in 0 until n.childCount) findScrollable(n.getChild(i), depth + 1)?.let { return it }
+        return null
     }
 
     override fun onInterrupt() {}
