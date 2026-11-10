@@ -18,7 +18,7 @@ class StartService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val stop = intent?.action == ACTION_STOP
-        val n = Notif.simple(this, Notif.CH_STATUS, if (stop) "מכבה..." else "מפעיל שלט וירטואלי...", true)
+        val n = Notif.simple(this, Notif.CH_STATUS, if (stop) L.t("מכבה...", "Stopping...") else L.t("מפעיל שלט וירטואלי...", "Starting the virtual controller..."), true)
         if (Build.VERSION.SDK_INT >= 34) {
             startForeground(Notif.ID_START, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
@@ -34,7 +34,7 @@ class StartService : Service() {
                     nm.notify(Notif.ID_START, Notif.simple(this, Notif.CH_STATUS, msg, true))
                 }
             } catch (t: Throwable) {
-                "שגיאה: ${t.javaClass.simpleName}: ${t.message}"
+                L.t("שגיאה: ${t.javaClass.simpleName}: ${t.message}", "Error: ${t.javaClass.simpleName}: ${t.message}")
             }
             Starter.log(this, result)
             stopForeground(STOP_FOREGROUND_REMOVE)

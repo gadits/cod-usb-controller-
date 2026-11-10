@@ -36,7 +36,7 @@ class CaptureService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val n = Notif.simple(this, Notif.CH_STATUS, "קורא את קוד הצימוד מהמסך...", true)
+        val n = Notif.simple(this, Notif.CH_STATUS, L.t("קורא את קוד הצימוד מהמסך...", "Reading the pairing code from the screen..."), true)
         if (Build.VERSION.SDK_INT >= 29) {
             startForeground(Notif.ID_CAPTURE, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
         } else {
@@ -47,14 +47,14 @@ class CaptureService : Service() {
         val data: Intent? = if (Build.VERSION.SDK_INT >= 33) intent?.getParcelableExtra(EXTRA_DATA, Intent::class.java)
         else intent?.getParcelableExtra(EXTRA_DATA)
         if (resultCode != Activity.RESULT_OK || data == null) {
-            fail("לא התקבל אישור לצילום המסך")
+            fail(L.t("לא התקבל אישור לצילום המסך", "Screen capture was not approved"))
             return START_NOT_STICKY
         }
         try {
             capture(resultCode, data)
         } catch (t: Throwable) {
-            Starter.log(this, "צילום המסך נכשל: ${t.javaClass.simpleName}: ${t.message}")
-            fail("לא הצלחתי לצלם את המסך – הקלד את הקוד ידנית")
+            Starter.log(this, L.t("צילום המסך נכשל: ${t.javaClass.simpleName}: ${t.message}", "Screen capture failed: ${t.javaClass.simpleName}: ${t.message}"))
+            fail(L.t("לא הצלחתי לצלם את המסך – הקלד את הקוד ידנית", "Couldn't capture the screen – type the code instead"))
         }
         return START_NOT_STICKY
     }
@@ -104,8 +104,8 @@ class CaptureService : Service() {
                 if (attempt < 8) tryTake(w, h, attempt + 1)
                 else {
                     done = true
-                    Starter.log(this, "לא התקבלה תמונה מהמסך")
-                    fail("לא התקבלה תמונה מהמסך – הקלד את הקוד ידנית")
+                    Starter.log(this, L.t("לא התקבלה תמונה מהמסך", "No image received from the screen"))
+                    fail(L.t("לא התקבלה תמונה מהמסך – הקלד את הקוד ידנית", "No image received from the screen – type the code instead"))
                 }
                 return@postDelayed
             }
@@ -117,13 +117,13 @@ class CaptureService : Service() {
                 full.copyPixelsFromBuffer(plane.buffer)
                 Bitmap.createBitmap(full, 0, 0, w, h)
             } catch (t: Throwable) {
-                Starter.log(this, "המרת התמונה נכשלה: ${t.message}")
+                Starter.log(this, L.t("המרת התמונה נכשלה: ${t.message}", "Image conversion failed: ${t.message}"))
                 null
             } finally {
                 img.close()
             }
             stopCapture()
-            if (bmp == null) fail("לא הצלחתי לקרוא את המסך – הקלד את הקוד ידנית") else recognize(bmp)
+            if (bmp == null) fail(L.t("לא הצלחתי לקרוא את המסך – הקלד את הקוד ידנית", "Couldn't read the screen – type the code instead")) else recognize(bmp)
         }, if (attempt == 0) 900L else 500L)
     }
 
@@ -133,17 +133,17 @@ class CaptureService : Service() {
             .addOnSuccessListener { text ->
                 val found = parse(text.text)
                 if (found == null) {
-                    Starter.log(this, "לא נמצא קוד בתמונה")
-                    fail("לא מצאתי קוד בן 6 ספרות על המסך. ודא שחלון הצימוד פתוח ונסה שוב")
+                    Starter.log(this, L.t("לא נמצא קוד בתמונה", "No code found in the image"))
+                    fail(L.t("לא מצאתי קוד בן 6 ספרות על המסך. ודא שחלון הצימוד פתוח ונסה שוב", "No 6-digit code found on screen. Make sure the pairing window is open and try again"))
                 } else {
-                    Starter.log(this, "הקוד נקרא מהמסך" + (found.second?.let { " (יציאה $it)" } ?: ""))
+                    Starter.log(this, L.t("הקוד נקרא מהמסך", "Code read from the screen") + (found.second?.let { L.t(" (יציאה $it)", " (port $it)") } ?: ""))
                     PairingUi.codeRead(found.first, found.second ?: 0)
                     finishService()
                 }
             }
             .addOnFailureListener {
-                Starter.log(this, "זיהוי הטקסט נכשל: ${it.message}")
-                fail("זיהוי הקוד נכשל – הקלד אותו ידנית")
+                Starter.log(this, L.t("זיהוי הטקסט נכשל: ${it.message}", "Text recognition failed: ${it.message}"))
+                fail(L.t("זיהוי הקוד נכשל – הקלד אותו ידנית", "Code recognition failed – type it instead"))
             }
     }
 

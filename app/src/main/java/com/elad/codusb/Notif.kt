@@ -22,7 +22,7 @@ object Notif {
     fun simple(ctx: Context, channel: String, text: String, ongoing: Boolean): Notification =
         Notification.Builder(ctx, channel)
             .setSmallIcon(android.R.drawable.ic_menu_manage)
-            .setContentTitle("שלט USB ל-COD")
+            .setContentTitle(L.t("שלט USB ל-COD", "COD USB Controller"))
             .setContentText(text)
             .setStyle(Notification.BigTextStyle().bigText(text))
             .setContentIntent(openAppIntent(ctx))

@@ -49,9 +49,9 @@ class PairingActivity : Activity() {
         handler.post {
             readPort = port
             filling = true
-            code.setText(c) // shown for checking — not sent until "צמד" is pressed
+            code.setText(c) // shown for checking — not sent until L.t("צמד", "Pair") is pressed
             filling = false
-            show("זוהה הקוד $c – ודא שהוא זהה לקוד בחלון ולחץ 'צמד'", PairingUi.Kind.OK)
+            show(L.t("זוהה הקוד $c – ודא שהוא זהה לקוד בחלון ולחץ 'צמד'", "Code $c detected – check it matches the window and tap 'Pair'"), PairingUi.Kind.OK)
         }
     }
     private var filling = false
@@ -64,12 +64,12 @@ class PairingActivity : Activity() {
         val i = if (android.os.Build.VERSION.SDK_INT >= 34)
             mpm.createScreenCaptureIntent(android.media.projection.MediaProjectionConfig.createConfigForDefaultDisplay())
         else mpm.createScreenCaptureIntent()
-        show("אשר את צילום המסך...", PairingUi.Kind.BUSY)
+        show(L.t("אשר את צילום המסך...", "Approve the screen capture..."), PairingUi.Kind.BUSY)
         try {
             @Suppress("DEPRECATION")
             startActivityForResult(i, REQ_CAPTURE)
         } catch (t: Throwable) {
-            show("צילום מסך לא זמין במכשיר – הקלד את הקוד", PairingUi.Kind.ERROR)
+            show(L.t("צילום מסך לא זמין במכשיר – הקלד את הקוד", "Screen capture isn't available on this device – type the code"), PairingUi.Kind.ERROR)
         }
     }
 
@@ -79,10 +79,10 @@ class PairingActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != REQ_CAPTURE) return
         if (resultCode != RESULT_OK || data == null) {
-            show("צילום המסך בוטל – אפשר להקליד את הקוד", PairingUi.Kind.INFO)
+            show(L.t("צילום המסך בוטל – אפשר להקליד את הקוד", "Screen capture cancelled – you can type the code"), PairingUi.Kind.INFO)
             return
         }
-        show("קורא את הקוד מהמסך...", PairingUi.Kind.BUSY)
+        show(L.t("קורא את הקוד מהמסך...", "Reading the code from the screen..."), PairingUi.Kind.BUSY)
         startForegroundService(
             Intent(this, CaptureService::class.java)
                 .putExtra(CaptureService.EXTRA_RESULT, resultCode)
@@ -92,7 +92,7 @@ class PairingActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.decorView.layoutDirection = View.LAYOUT_DIRECTION_RTL
+        window.decorView.layoutDirection = L.dir
         window.statusBarColor = Ui.BG_TOP
 
         val root = LinearLayout(this).apply {
@@ -101,7 +101,7 @@ class PairingActivity : Activity() {
             clipChildren = false
             clipToPadding = false
         }
-        val card = Ui.card(this, "קוד צימוד", Ui.GREEN)
+        val card = Ui.card(this, L.t("קוד צימוד", "Pairing code"), Ui.GREEN)
 
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -139,15 +139,15 @@ class PairingActivity : Activity() {
             })
         }
         card.addView(code, LinearLayout.LayoutParams(-1, -2))
-        card.addView(Ui.bumper(this, "צמד", true) { submit() })
-        card.addView(Ui.bumper(this, "📷  קרא את הקוד מהמסך") { readFromScreen() })
+        card.addView(Ui.bumper(this, L.t("צמד", "Pair"), true) { submit() })
+        card.addView(Ui.bumper(this, L.t("📷  קרא את הקוד מהמסך", "📷  Read the code from the screen")) { readFromScreen() })
         card.addView(Ui.text(
             this,
-            "אפשרות נוספת: פתח את חלון הצימוד בהגדרות ולחץ כאן. אחרי אישור צילום מסך, האפליקציה תזהה את הקוד ותכניס אותו לתיבה – " +
-                "בדוק שהוא נכון ולחץ 'צמד'. התמונה לא נשמרת ולא נשלחת לשום מקום.",
+            L.t("אפשרות נוספת: פתח את חלון הצימוד בהגדרות ולחץ כאן. אחרי אישור צילום מסך, האפליקציה תזהה את הקוד ותכניס אותו לתיבה – ", "Another option: open the pairing window in Settings and tap here. After you approve a screen capture, the app finds the code and fills it in – ") +
+                L.t("בדוק שהוא נכון ולחץ 'צמד'. התמונה לא נשמרת ולא נשלחת לשום מקום.", "check it and tap 'Pair'. The image is never saved or sent anywhere."),
             12.5f, Ui.INK_FAINT
         ).apply { setPadding(dp(4), dp(8), dp(4), 0) })
-        card.addView(Ui.bumper(this, "ביטול") {
+        card.addView(Ui.bumper(this, L.t("ביטול", "Cancel")) {
             startService(Intent(this, PairingService::class.java).setAction(PairingService.ACTION_STOP))
             finish()
         })
@@ -167,7 +167,7 @@ class PairingActivity : Activity() {
             // recreated (e.g. by the system): just show where we are, don't start over
             show(last.first, last.second)
         } else {
-            show("פותח את ההגדרות לידי...", PairingUi.Kind.INFO)
+            show(L.t("פותח את ההגדרות לידי...", "Opening Settings next to me..."), PairingUi.Kind.INFO)
             startForegroundService(Intent(this, PairingService::class.java).setAction(PairingService.ACTION_START))
             handler.postDelayed({ openSettingsBeside() }, 250)
         }
@@ -204,7 +204,7 @@ class PairingActivity : Activity() {
         super.onMultiWindowModeChanged(isInMultiWindowMode)
         PairingUi.inSplit = isInMultiWindowMode
         if (isInMultiWindowMode && !submitted) {
-            show("בחר בהגדרות 'צימוד מכשיר באמצעות קוד צימוד' והקלד כאן את 6 הספרות", PairingUi.Kind.INFO)
+            show(L.t("בחר בהגדרות 'צימוד מכשיר באמצעות קוד צימוד' והקלד כאן את 6 הספרות", "In Settings choose 'Pair device with pairing code' and type the 6 digits here"), PairingUi.Kind.INFO)
         }
     }
 
@@ -233,8 +233,16 @@ class PairingActivity : Activity() {
             // the Settings sub-page host, asked to show the Wireless debugging page
             Intent().setClassName("com.android.settings", "com.android.settings.SubSettings")
                 .putExtra(":settings:show_fragment", fragment),
-            // Developer options, asked to show the Wireless debugging page (else stays on Developer options)
+            // the explicit Developer-options host, asked for the page (both extra spellings)
+            Intent().setClassName("com.android.settings", "com.android.settings.Settings\$DevelopmentSettingsDashboardActivity")
+                .putExtra(":settings:show_fragment", fragment)
+                .putExtra(":android:show_fragment", fragment),
+            // action names some vendor builds register
+            Intent("android.settings.WIRELESS_DEBUGGING_SETTINGS"),
+            Intent("android.settings.ADB_WIRELESS_SETTINGS"),
+            // Developer options, asked to show the Wireless debugging page (else scrolls to that row)
             Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+                .putExtra(":android:show_fragment", fragment)
                 .putExtra(":settings:show_fragment", fragment)
                 .putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
         )
@@ -257,16 +265,16 @@ class PairingActivity : Activity() {
                     i.resolveActivity(packageManager) != null && launchBeside(i)
                 }
                 if (ok != null) {
-                    Starter.log(this, "הקיצור לא נפתח – נפתח בדרך חלופית ${ok.index + 1}")
+                    Starter.log(this, L.t("הקיצור לא נפתח – נפתח בדרך חלופית ${ok.index + 1}", "Shortcut didn't open – opened with alternative ${ok.index + 1}"))
                 } else {
-                    Starter.log(this, "הקיצור לא נפתח – פותח אפשרויות מפתח")
+                    Starter.log(this, L.t("הקיצור לא נפתח – פותח אפשרויות מפתח", "Shortcut didn't open – opening Developer options"))
                     launchBeside(devOptionsIntent())
                 }
             }
         }, 1500)
         handler.postDelayed({
             if (!isFinishing && !isInMultiWindowMode) {
-                Starter.log(this, "המכשיר לא פיצל את המסך – ההקלדה תתבצע בהתראה")
+                Starter.log(this, L.t("המכשיר לא פיצל את המסך – ההקלדה תתבצע בהתראה", "The device didn't split the screen – type the code in the notification"))
             }
         }, 3000)
     }
@@ -274,11 +282,11 @@ class PairingActivity : Activity() {
     private fun submit() {
         val c = code.text.toString().filter { it.isDigit() }
         if (c.length != 6) {
-            show("הקוד צריך להיות 6 ספרות", PairingUi.Kind.ERROR)
+            show(L.t("הקוד צריך להיות 6 ספרות", "The code must be 6 digits"), PairingUi.Kind.ERROR)
             return
         }
         submitted = true
-        show("מצמד...", PairingUi.Kind.BUSY)
+        show(L.t("מצמד...", "Pairing..."), PairingUi.Kind.BUSY)
         code.windowInsetsController?.hide(WindowInsets.Type.ime())
         startService(
             Intent(this, PairingService::class.java)

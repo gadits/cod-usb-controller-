@@ -27,28 +27,28 @@ object PairingGuide {
         d.requestWindowFeature(Window.FEATURE_NO_TITLE)
         d.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
-        val card = Ui.card(a, "צימוד ראשוני", Ui.BLUE).apply {
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
+        val card = Ui.card(a, L.t("צימוד ראשוני", "First-time pairing"), Ui.BLUE).apply {
+            layoutDirection = L.dir
         }
         card.addView(Ui.text(
             a,
-            "כדי שהאפליקציה תוכל להפעיל את השלט, יש לבצע צימוד חד-פעמי עם ניפוי הבאגים האלחוטי של המכשיר. התהליך אורך פחות מדקה.",
+            L.t("כדי שהאפליקציה תוכל להפעיל את השלט, יש לבצע צימוד חד-פעמי עם ניפוי הבאגים האלחוטי של המכשיר. התהליך אורך פחות מדקה.", "To let the app start the controller, pair it once with the device's wireless debugging. It takes less than a minute."),
             15f, Ui.INK_SOFT
         ).apply { setPadding(0, 0, 0, Ui.dp(a, 6)) })
-        card.addView(step(a, "1", "במסך שייפתח, ודא ש'ניפוי באגים אלחוטי' מופעל. אם תתבקש לאשר את הרשת – סמן 'אפשר תמיד ברשת זו' ואשר."))
-        card.addView(step(a, "2", "בחר 'צימוד מכשיר באמצעות קוד צימוד'. יוצג חלון ובו קוד בן 6 ספרות."))
-        card.addView(step(a, "3", "בראש המסך תופיע התראה כמו זו. לחץ על 'הקלד קוד צימוד', הזן את הקוד ושלח:"))
+        card.addView(step(a, "1", L.t("במסך שייפתח, ודא ש'ניפוי באגים אלחוטי' מופעל. אם תתבקש לאשר את הרשת – סמן 'אפשר תמיד ברשת זו' ואשר.", "On the screen that opens, make sure 'Wireless debugging' is on. If asked about the network – tick 'Always allow on this network' and confirm.")))
+        card.addView(step(a, "2", L.t("בחר 'צימוד מכשיר באמצעות קוד צימוד'. יוצג חלון ובו קוד בן 6 ספרות.", "Choose 'Pair device with pairing code'. A window with a 6-digit code appears.")))
+        card.addView(step(a, "3", L.t("בראש המסך תופיע התראה כמו זו. לחץ על 'הקלד קוד צימוד', הזן את הקוד ושלח:", "Type the code in the app's box (or in a notification like this one, at the top of the screen):")))
         card.addView(mockNotification(a), LinearLayout.LayoutParams(-1, -2).apply {
             topMargin = Ui.dp(a, 10)
         })
-        card.addView(Ui.text(a, "יש להישאר במסך ההגדרות עד לסיום הצימוד – יציאה ממנו מבטלת את הקוד.", 13.5f, Ui.RED, Ui.MEDIUM).apply {
+        card.addView(Ui.text(a, L.t("יש להישאר במסך ההגדרות עד לסיום הצימוד – יציאה ממנו מבטלת את הקוד.", "Stay on the Settings screen until pairing finishes – leaving it cancels the code."), 13.5f, Ui.RED, Ui.MEDIUM).apply {
             setPadding(0, Ui.dp(a, 14), 0, 0)
         })
-        card.addView(Ui.bumper(a, "התחל צימוד", true) {
+        card.addView(Ui.bumper(a, L.t("התחל צימוד", "Start pairing"), true) {
             d.dismiss()
             onStart()
         })
-        card.addView(Ui.bumper(a, "לא עכשיו") { d.dismiss() })
+        card.addView(Ui.bumper(a, L.t("לא עכשיו", "Not now")) { d.dismiss() })
 
         val holder = FrameLayout(a).apply {
             setPadding(Ui.dp(a, 16), Ui.dp(a, 24), Ui.dp(a, 16), Ui.dp(a, 24))
@@ -88,10 +88,10 @@ object PairingGuide {
             ).apply { cornerRadius = Ui.dpf(a, 22f) }
             elevation = Ui.dpf(a, 6f)
         }
-        box.addView(Ui.text(a, "הקלד כאן את קוד הצימוד", 18f, Color.WHITE, Ui.BOLD))
-        box.addView(Ui.text(a, "הזן את הקוד בן 6 הספרות המוצג בחלון הצימוד", 13.5f, Color.argb(235, 255, 255, 255)))
+        box.addView(Ui.text(a, L.t("הקלד כאן את קוד הצימוד", "Type the pairing code here"), 18f, Color.WHITE, Ui.BOLD))
+        box.addView(Ui.text(a, L.t("הזן את הקוד בן 6 הספרות המוצג בחלון הצימוד", "Enter the 6-digit code shown in the pairing window"), 13.5f, Color.argb(235, 255, 255, 255)))
         val button = TextView(a).apply {
-            text = "✍  הקלד קוד צימוד"
+            text = L.t("✍  הקלד קוד צימוד", "✍  Type pairing code")
             textSize = 15f
             typeface = Ui.BOLD
             gravity = Gravity.CENTER

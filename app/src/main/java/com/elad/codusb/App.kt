@@ -11,6 +11,7 @@ import java.security.Security
 class App : Application() {
     override fun onCreate() {
         super.onCreate()
+        L.init(this)
         try {
             Security.insertProviderAt(Conscrypt.newProvider(), 1)
         } catch (_: Throwable) {
@@ -23,10 +24,10 @@ class App : Application() {
         }
         val nm = getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(
-            NotificationChannel(Notif.CH_PAIR, "צימוד", NotificationManager.IMPORTANCE_HIGH)
+            NotificationChannel(Notif.CH_PAIR, L.t("צימוד", "Pairing"), NotificationManager.IMPORTANCE_HIGH)
         )
         nm.createNotificationChannel(
-            NotificationChannel(Notif.CH_STATUS, "סטטוס השלט", NotificationManager.IMPORTANCE_DEFAULT)
+            NotificationChannel(Notif.CH_STATUS, L.t("סטטוס השלט", "Controller status"), NotificationManager.IMPORTANCE_DEFAULT)
         )
     }
 }

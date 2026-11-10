@@ -27,7 +27,7 @@
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
-        android:label="שלט USB ל-COD"
+        android:label="COD USB"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 

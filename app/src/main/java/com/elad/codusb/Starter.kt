@@ -85,7 +85,7 @@ object Starter {
             val d = im.getInputDevice(id) ?: return@mapNotNull null
             if (!d.isExternal || isOurs(d)) return@mapNotNull null
             "${d.name} [%04x:%04x, sources=0x%x]".format(d.vendorId, d.productId, d.sources)
-        }.distinct().joinToString(" | ").ifEmpty { "אין התקנים חיצוניים" }
+        }.distinct().joinToString(" | ").ifEmpty { L.t("אין התקנים חיצוניים", "No external devices") }
     }
 
     fun describeDevice(d: InputDevice): String =
@@ -148,7 +148,7 @@ object Starter {
             Settings.Global.putInt(cr, "adb_wifi_enabled", 1)
             true
         } catch (t: Throwable) {
-            log(ctx, "שגיאה בהפעלת ניפוי באגים אלחוטי: ${t.message}")
+            log(ctx, L.t("שגיאה בהפעלת ניפוי באגים אלחוטי: ${t.message}", "Error turning on wireless debugging: ${t.message}"))
             false
         }
     }
@@ -175,7 +175,7 @@ object Starter {
             val fromLast = prefs(ctx).getInt("last_connect_port", 0).takeIf { it > 0 }
             val ports = listOfNotNull(fromProp, fromMdns, fromLast).distinct()
             if (round <= 2 || ports.isEmpty()) {
-                log(ctx, "חיבור (ניסיון $round): מערכת=${fromProp ?: "-"} רשת=${fromMdns ?: "-"} אחרון=${fromLast ?: "-"}")
+                log(ctx, L.t("חיבור (ניסיון $round)", "Connect (attempt $round)") + ": prop=${fromProp ?: "-"} mdns=${fromMdns ?: "-"} last=${fromLast ?: "-"}")
             }
             for (port in ports) {
                 for (host in listOfNotNull(LOCALHOST, AdbMdns.lastHost).distinct()) {
@@ -184,7 +184,7 @@ object Starter {
                         prefs(ctx).edit().putInt("last_connect_port", port).apply()
                         return m
                     }
-                    if (round <= 2) log(ctx, if (r == null) "אין תשובה מ-$host:$port – מאפס" else "חיבור נכשל ($host:$port): ${lastConnectError}")
+                    if (round <= 2) log(ctx, if (r == null) L.t("אין תשובה מ-$host:$port – מאפס", "No answer from $host:$port – resetting") else L.t("חיבור נכשל ($host:$port): ${lastConnectError}", "Connection failed ($host:$port): ${lastConnectError}"))
                     // a stuck or failed connection is thrown away; continue with a fresh one
                     AdbManager.reset()
                     m = AdbManager.get(ctx)
@@ -192,7 +192,7 @@ object Starter {
             }
             Thread.sleep(2_000)
         }
-        log(ctx, "לא הצלחתי להתחבר אחרי $round ניסיונות")
+        log(ctx, L.t("לא הצלחתי להתחבר אחרי $round ניסיונות", "Couldn't connect after $round attempts"))
         return null
     }
 
@@ -222,7 +222,7 @@ object Starter {
         return try {
             ex.submit<String> { shellBlocking(m, cmd) }.get(20, java.util.concurrent.TimeUnit.SECONDS)
         } catch (e: java.util.concurrent.TimeoutException) {
-            throw java.io.IOException("הפקודה לא הסתיימה בזמן")
+            throw java.io.IOException(L.t("הפקודה לא הסתיימה בזמן", "The command didn't finish in time"))
         } catch (e: java.util.concurrent.ExecutionException) {
             throw (e.cause ?: e)
         } finally {
@@ -278,7 +278,7 @@ object Starter {
                 "i=0; while [ \$i -lt 50 ] && [ ! -s $PID_FILE ]; do sleep 0.1; i=\$((i+1)); done; " +
                 "sleep 0.5; echo started=\$(cat $PID_FILE 2>/dev/null)"
         )
-        log(ctx, "הפעלת מנוע השלט: $out")
+        log(ctx, L.t("הפעלת מנוע השלט: $out", "Controller engine start: $out"))
         repeat(16) {
             if (isVirtualPresent(ctx)) return true
             Thread.sleep(500)
@@ -291,9 +291,9 @@ object Starter {
                     "echo inputs=\$(dumpsys input | grep -c 'Xbox Wireless Controller'); " +
                     "tail -5 /data/local/tmp/codusb_hid.log"
             )
-            log(ctx, "אבחון: $diag")
+            log(ctx, L.t("אבחון: $diag", "Diagnostics: $diag"))
         } catch (t: Throwable) {
-            log(ctx, "אבחון נכשל: ${t.message}")
+            log(ctx, L.t("אבחון נכשל: ${t.message}", "Diagnostics failed: ${t.message}"))
         }
         return false
     }
@@ -304,9 +304,9 @@ object Starter {
             if (startHelper(ctx, m)) {
                 Thread.sleep(2_500)
                 if (isVirtualPresent(ctx)) return true
-                log(ctx, "השלט נעלם אחרי ההפעלה – מנסה שוב")
+                log(ctx, L.t("השלט נעלם אחרי ההפעלה – מנסה שוב", "The controller disappeared after starting – retrying"))
             } else if (attempt == 0) {
-                log(ctx, "ניסיון נוסף להפעלת השלט")
+                log(ctx, L.t("ניסיון נוסף להפעלת השלט", "Trying to start the controller again"))
             }
         }
         return false
@@ -319,51 +319,51 @@ object Starter {
     /** Called right after a successful pairing. */
     @Synchronized
     fun afterPairing(ctx: Context, progress: (String) -> Unit): String {
-        if (isVirtualPresent(ctx)) return "הכל מוכן ✓ השלט הווירטואלי כבר פעיל."
-        progress("מתחבר...")
+        if (isVirtualPresent(ctx)) return L.t("הכל מוכן ✓ השלט הווירטואלי כבר פעיל.", "All set ✓ the virtual controller is already on.")
+        progress(L.t("מתחבר...", "Connecting..."))
         Thread.sleep(1_500) // give the system a moment after pairing
         val m = connect(ctx, 45_000)
-            ?: return "הצימוד נשמר ✓ אבל החיבור לא הצליח כרגע. ודא ש'ניפוי באגים אלחוטי' דולק ולחץ A במסך הראשי – אין צורך לצמד שוב."
+            ?: return L.t("הצימוד נשמר ✓ אבל החיבור לא הצליח כרגע. ודא ש'ניפוי באגים אלחוטי' דולק ולחץ A במסך הראשי – אין צורך לצמד שוב.", "Pairing saved ✓ but connecting failed for now. Make sure 'Wireless debugging' is on and press A on the main screen – no need to pair again.")
         val granted = grantSecureSettings(ctx, m)
-        progress("יוצר שלט וירטואלי...")
+        progress(L.t("יוצר שלט וירטואלי...", "Creating the virtual controller..."))
         val ok = startHelperReliably(ctx, m)
-        val base = if (ok) "הכל מוכן ✓ השלט הווירטואלי פעיל." else "הצימוד הצליח, אבל השלט הווירטואלי לא נוצר. פתח את האפליקציה לפרטים."
+        val base = if (ok) L.t("הכל מוכן ✓ השלט הווירטואלי פעיל.", "All set ✓ the virtual controller is on.") else L.t("הצימוד הצליח, אבל השלט הווירטואלי לא נוצר. פתח את האפליקציה לפרטים.", "Paired, but the virtual controller wasn't created. Open the app for details.")
         return if (granted) base
-        else "$base\nשים לב: ההפעלה האוטומטית אחרי הדלקה לא אושרה (בשיאומי צריך להדליק 'ניפוי באגים USB (הגדרות אבטחה)' ולצמד שוב)."
+        else L.t("$base\nשים לב: ההפעלה האוטומטית אחרי הדלקה לא אושרה (בשיאומי צריך להדליק 'ניפוי באגים USB (הגדרות אבטחה)' ולצמד שוב).", "$base\nNote: starting automatically after boot wasn't allowed (on Xiaomi turn on 'USB debugging (Security settings)' and pair again).")
     }
 
     /** Full automatic start: Wi-Fi, wireless debugging, connect, create controller. */
     @Synchronized
     fun fullStart(ctx: Context, progress: (String) -> Unit): String {
-        if (isVirtualPresent(ctx)) return "השלט הווירטואלי כבר פעיל ✓"
-        if (!isPaired(ctx)) return "צריך קודם לבצע את ההגדרה החד-פעמית (צימוד) באפליקציה."
+        if (isVirtualPresent(ctx)) return L.t("השלט הווירטואלי כבר פעיל ✓", "The virtual controller is already on ✓")
+        if (!isPaired(ctx)) return L.t("צריך קודם לבצע את ההגדרה החד-פעמית (צימוד) באפליקציה.", "Complete the one-time setup (pairing) in the app first.")
 
         if (!isWifiConnected(ctx)) {
-            progress("ממתין ל-WiFi...")
+            progress(L.t("ממתין ל-WiFi...", "Waiting for Wi-Fi..."))
             val until = System.currentTimeMillis() + 180_000
             while (!isWifiConnected(ctx) && System.currentTimeMillis() < until) Thread.sleep(2_000)
-            if (!isWifiConnected(ctx)) return "אין חיבור WiFi. התחבר ל-WiFi ולחץ 'הפעל עכשיו'."
+            if (!isWifiConnected(ctx)) return L.t("אין חיבור WiFi. התחבר ל-WiFi ולחץ 'הפעל עכשיו'.", "No Wi-Fi. Connect to Wi-Fi and press A.")
             Thread.sleep(3_000)
         }
 
         val enabled = enableWirelessDebugging(ctx)
-        progress("מתחבר...")
+        progress(L.t("מתחבר...", "Connecting..."))
         val m = connect(ctx, if (enabled) 60_000 else 20_000)
-            ?: return if (enabled) "לא הצלחתי להתחבר. אם הופיע חלון 'לאפשר ניפוי באגים אלחוטי ברשת זו?' – סמן 'אפשר תמיד' ואשר, ואז לחץ A."
-            else "הדלק 'ניפוי באגים אלחוטי' באפשרויות מפתח ולחץ 'הפעל עכשיו'."
+            ?: return if (enabled) L.t("לא הצלחתי להתחבר. אם הופיע חלון 'לאפשר ניפוי באגים אלחוטי ברשת זו?' – סמן 'אפשר תמיד' ואשר, ואז לחץ A.", "Couldn't connect. If 'Allow wireless debugging on this network?' appeared – tick 'Always allow', confirm, then press A.")
+            else L.t("הדלק 'ניפוי באגים אלחוטי' באפשרויות מפתח ולחץ 'הפעל עכשיו'.", "Turn on 'Wireless debugging' in Developer options and press A.")
 
         if (!hasSecureSettings(ctx)) grantSecureSettings(ctx, m)
 
-        progress("יוצר שלט וירטואלי...")
-        return if (startHelperReliably(ctx, m)) "השלט הווירטואלי פעיל ✓ חבר את השלט ופתח את המשחק."
-        else "השלט הווירטואלי לא נוצר. פתח את האפליקציה לפרטים."
+        progress(L.t("יוצר שלט וירטואלי...", "Creating the virtual controller..."))
+        return if (startHelperReliably(ctx, m)) L.t("השלט הווירטואלי פעיל ✓ חבר את השלט ופתח את המשחק.", "Virtual controller on ✓ plug in your controller and open the game.")
+        else L.t("השלט הווירטואלי לא נוצר. פתח את האפליקציה לפרטים.", "The virtual controller wasn't created. Open the app for details.")
     }
 
     @Synchronized
     fun fullStop(ctx: Context): String {
-        if (!isVirtualPresent(ctx)) return "השלט הווירטואלי כבר כבוי."
+        if (!isVirtualPresent(ctx)) return L.t("השלט הווירטואלי כבר כבוי.", "The virtual controller is already off.")
         enableWirelessDebugging(ctx)
-        val m = connect(ctx, 20_000) ?: return "לא הצלחתי להתחבר כדי לכבות. ודא ש'ניפוי באגים אלחוטי' דולק."
+        val m = connect(ctx, 20_000) ?: return L.t("לא הצלחתי להתחבר כדי לכבות. ודא ש'ניפוי באגים אלחוטי' דולק.", "Couldn't connect to stop it. Make sure 'Wireless debugging' is on.")
         return try {
             stopHelper(m)
             var gone = false
@@ -373,9 +373,9 @@ object Starter {
                     gone = !isVirtualPresent(ctx)
                 }
             }
-            if (gone) "השלט הווירטואלי כובה." else "הכיבוי נכשל."
+            if (gone) L.t("השלט הווירטואלי כובה.", "The virtual controller is off.") else L.t("הכיבוי נכשל.", "Stopping failed.")
         } catch (t: Throwable) {
-            "שגיאה: ${t.message}"
+            L.t("שגיאה: ${t.message}", "Error: ${t.message}")
         }
     }
 }
