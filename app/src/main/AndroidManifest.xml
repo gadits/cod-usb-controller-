@@ -35,6 +35,13 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".PairingActivity"
+            android:exported="false"
+            android:resizeableActivity="true"
+            android:taskAffinity="com.elad.codusb.pairing"
+            android:windowSoftInputMode="stateVisible|adjustResize" />
+
         <service
             android:name=".PairingService"
             android:exported="false"

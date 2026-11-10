@@ -217,6 +217,27 @@ def allow_network_prompt():
     return True
 
 
+def window_frame(token):
+    out = run("adb shell dumpsys window windows", 30)
+    for b in re.split(r"\n\s*Window #\d+ ", out):
+        if token in b.split("\n", 1)[0]:
+            m = re.search(r"Frames:.*?\bframe=\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]", b) or \
+                re.search(r"[^a-zA-Z]frame=\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]", b)
+            if m:
+                return tuple(map(int, m.groups()))
+    return None
+
+
+def split_screen_active():
+    """Both our pairing screen and Settings visible side by side."""
+    ours = window_frame("com.elad.codusb.PairingActivity")
+    out = run("adb shell dumpsys activity activities", 30)
+    log("pairing frame:", ours, "| resumed:", re.findall(r"(?:topResumedActivity|ResumedActivity)[^\n]*", out)[:4])
+    if not ours:
+        return False
+    return (ours[3] - ours[1]) < H * 0.85 and "com.android.settings" in out
+
+
 def notif_dump():
     return run(f"adb shell dumpsys notification --noredact", 30)
 
@@ -301,6 +322,10 @@ def main():
     if not g:
         return
     tap(g["cx"], g["cy"])
+    time.sleep(4)
+    shot("pairing_screen_opened")
+    split = split_screen_active()
+    result("split_screen", split)
     ready, dt = wait_for(lambda: "הקלד קוד צימוד" in notif_dump(), 10, 0.2)
     result("code_input_ready", bool(ready))
     result("code_input_ready_seconds", round(dt, 2))
@@ -350,39 +375,72 @@ def main():
     if not code:
         return
 
-    # ---------- 5. type the code in the notification ----------
-    run("adb shell cmd statusbar expand-notifications")
-    time.sleep(2)
-    shot("shade_open")
-    btn = None
-    for _ in range(3):
-        btn = find(r"^הקלד קוד צימוד$")
-        if btn:
-            break
-        time.sleep(1)
-    result("reply_button_found", bool(btn))
-    if not btn:
-        return
-    tap(btn["cx"], btn["cy"])
-    time.sleep(1.5)
-    run(f"adb shell input text {code}")
-    time.sleep(0.8)
-    shot("code_typed_in_notification")
-    sent = find(r"^Send$|^שלח$")
-    if sent:
-        tap(sent["cx"], sent["cy"])
+    # ---------- 5a. split screen: type the code in the app's code box ----------
+    if split:
+        frame = window_frame("com.elad.codusb.PairingActivity")
+        log("pairing screen frame:", frame)
+        if frame:
+            tap((frame[0] + frame[2]) // 2, frame[1] + 60)   # focus our half (its top area)
+            time.sleep(1)
+        field = None
+        for n in nodes(raw_dump()):
+            if n["pkg"] == PKG and n["cls"] == "android.widget.EditText":
+                field = n
+                break
+        result("code_box_found_in_split", bool(field))
+        if field:
+            tap(field["cx"], field["cy"])
+            time.sleep(1)
+            run(f"adb shell input text {code}")
+            time.sleep(1.5)
+            shot("code_typed_in_app_box")
+            ok, dt = wait_for(virtual_present, 90, 1.0)
+            result("pairing_creates_controller", bool(ok))
+            result("paired_via", "split_screen_box")
+            result("seconds_from_code_to_controller", round(dt, 1))
+            time.sleep(2)
+            shot("after_pairing")
+            log("app log:", run("adb logcat -d -s CodUsb", 20)[-1500:])
+            return_after_split = True
+        else:
+            return_after_split = False
     else:
-        run("adb shell input keyevent 66")
-    time.sleep(1)
-    result("dialog_still_open_after_typing", "Pair with device" in raw_dump() or True)
+        return_after_split = False
 
-    ok, dt = wait_for(virtual_present, 90, 1.0)
-    result("pairing_creates_controller", bool(ok))
-    result("seconds_from_code_to_controller", round(dt, 1))
-    run("adb shell cmd statusbar collapse")
-    time.sleep(1)
-    shot("after_pairing")
-    log("notifications:", notif_dump()[:3000])
+    if not return_after_split:
+        # ---------- 5b. no split screen: type the code in the notification ----------
+        run("adb shell cmd statusbar expand-notifications")
+        time.sleep(2)
+        shot("shade_open")
+        btn = None
+        for _ in range(3):
+            btn = find(r"^הקלד קוד צימוד$")
+            if btn:
+                break
+            time.sleep(1)
+        result("reply_button_found", bool(btn))
+        if not btn:
+            return
+        tap(btn["cx"], btn["cy"])
+        time.sleep(1.5)
+        run(f"adb shell input text {code}")
+        time.sleep(0.8)
+        shot("code_typed_in_notification")
+        sent = find(r"^Send$|^שלח$")
+        if sent:
+            tap(sent["cx"], sent["cy"])
+        else:
+            run("adb shell input keyevent 66")
+        time.sleep(1)
+        result("dialog_still_open_after_typing", "Pair with device" in raw_dump() or True)
+
+        ok, dt = wait_for(virtual_present, 90, 1.0)
+        result("pairing_creates_controller", bool(ok))
+        result("seconds_from_code_to_controller", round(dt, 1))
+        run("adb shell cmd statusbar collapse")
+        time.sleep(1)
+        shot("after_pairing")
+        log("notifications:", notif_dump()[:3000])
 
     # ---------- 6. B / A ----------
     run(f"adb shell am force-stop {PKG}")  # does not kill the shell helper

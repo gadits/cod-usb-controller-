@@ -48,8 +48,15 @@ class PairingService : Service() {
                     post(progress("מצמד...", "רק רגע"))
                 }
             }
+            ACTION_CODE -> {
+                val code = intent.getStringExtra(EXTRA_CODE) ?: ""
+                if (!busy) {
+                    busy = true
+                    thread(name = "codusb-pair") { pair(code) }
+                }
+            }
             ACTION_STOP -> finish(null)
-            else -> begin()
+            else -> if (!running) begin()
         }
         return START_NOT_STICKY
     }
@@ -120,6 +127,8 @@ class PairingService : Service() {
 
     private fun begin() {
         running = true
+        PairingUi.done = false
+        PairingUi.update("בחר בהגדרות 'צימוד מכשיר באמצעות קוד צימוד'", PairingUi.Kind.INFO)
         val n = input(
             "ממתין לחלון הצימוד",
             "בחר 'צימוד מכשיר באמצעות קוד צימוד'. התראה זו תופיע שוב כשהקוד יוצג.",
@@ -141,6 +150,7 @@ class PairingService : Service() {
             if (isNew && !busy) {
                 if (!detectedOnce) Starter.log(this, "חלון הצימוד זוהה")
                 detectedOnce = true
+                PairingUi.update("חלון הצימוד זוהה ✓ הקלד כאן את 6 הספרות", PairingUi.Kind.OK)
                 // pop up over the Settings dialog, ready for the code
                 post(input("הקלד כאן את קוד הצימוד", "הזן את הקוד בן 6 הספרות המוצג בחלון הצימוד", true))
             }
@@ -157,9 +167,11 @@ class PairingService : Service() {
             val code = numbers.firstOrNull { it.length == 6 } ?: ""
             val manualPort = numbers.firstOrNull { it.length in 4..5 }?.toIntOrNull() ?: 0
             if (code.length != 6) {
+                PairingUi.update("הקוד צריך להיות 6 ספרות", PairingUi.Kind.ERROR)
                 post(input("הקוד צריך להיות 6 ספרות", "נסה שוב – הקלד את 6 הספרות מהחלון", true))
                 return
             }
+            PairingUi.update("מצמד...", PairingUi.Kind.BUSY)
             post(progress("מצמד...", "רק רגע"))
 
             var port = if (manualPort > 0) manualPort else pairingPort
@@ -169,6 +181,7 @@ class PairingService : Service() {
                 port = pairingPort
             }
             if (port <= 0) {
+                PairingUi.update("לא זיהיתי את חלון הצימוד – ודא שפתחת 'צימוד מכשיר באמצעות קוד צימוד'", PairingUi.Kind.ERROR)
                 post(
                     input(
                         "לא זיהיתי את חלון הצימוד",
@@ -186,6 +199,7 @@ class PairingService : Service() {
                 false
             }
             if (!ok) {
+                PairingUi.update("הקוד לא התקבל – קוד שגוי או שפג תוקפו. נסה שוב", PairingUi.Kind.ERROR)
                 post(input("הקוד לא התקבל", "קוד שגוי או שפג תוקפו. סגור את החלון, פתח קוד חדש והקלד שוב", true))
                 return
             }
@@ -195,9 +209,16 @@ class PairingService : Service() {
             Starter.log(this, "הצימוד הצליח")
             mdns?.stop()
             mdns = null
+            PairingUi.update("✓ צומד! מפעיל את השלט...", PairingUi.Kind.BUSY)
             post(progress("✓ צומד!", "מפעיל את השלט..."))
-            val result = Starter.afterPairing(this) { msg -> post(progress("✓ צומד!", msg)) }
+            val result = Starter.afterPairing(this) { msg ->
+                PairingUi.update(msg, PairingUi.Kind.BUSY)
+                post(progress("✓ צומד!", msg))
+            }
             Starter.log(this, result)
+            val good = Starter.isVirtualPresent(this)
+            PairingUi.done = good
+            PairingUi.update(if (good) "✓ $result" else result, if (good) PairingUi.Kind.OK else PairingUi.Kind.ERROR)
             handler.post { finish(result) }
         } finally {
             busy = false
@@ -229,6 +250,8 @@ class PairingService : Service() {
         const val ACTION_START = "com.elad.codusb.PAIR_START"
         const val ACTION_REPLY = "com.elad.codusb.PAIR_REPLY"
         const val ACTION_STOP = "com.elad.codusb.PAIR_STOP"
+        const val ACTION_CODE = "com.elad.codusb.PAIR_CODE"
+        const val EXTRA_CODE = "code"
         const val KEY_CODE = "code"
         const val ACTION_LABEL = "הקלד קוד צימוד"
     }

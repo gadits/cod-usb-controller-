@@ -243,7 +243,7 @@ class MainActivity : Activity() {
         val card = Ui.card(this, "הגדרה חד-פעמית", Ui.BLUE)
         card.addView(Ui.lightRow(this, devOn, if (devOn) "אפשרויות מפתח פעילות" else "אפשרויות מפתח כבויות"))
         card.addView(Ui.lightRow(this, paired, if (paired) "צימוד בוצע" else "עוד לא בוצע צימוד"))
-        card.addView(Ui.lightRow(this, wss, if (wss) "הפעלה אחרי הדלקה מאושרת" else "הפעלה אחרי הדלקה לא מאושרת"))
+        card.addView(Ui.lightRow(this, wss, if (wss) "הרשאה להדלקת ניפוי באגים: התקבלה" else "הרשאה להדלקת ניפוי באגים: תתקבל בצימוד"))
         if (!paired) {
             card.addView(
                 Ui.text(
@@ -335,33 +335,7 @@ class MainActivity : Activity() {
     }
 
     private fun beginPairing() {
-        startForegroundService(Intent(this, PairingService::class.java).setAction(PairingService.ACTION_START))
-        // Straight to the "Wireless debugging" screen (the same shortcut as long-pressing its
-        // quick-settings tile); falls back to Developer options.
-        val wireless = Intent("android.service.quicksettings.action.QS_TILE_PREFERENCES")
-            .setPackage("com.android.settings")
-            .putExtra(
-                Intent.EXTRA_COMPONENT_NAME,
-                ComponentName(
-                    "com.android.settings",
-                    "com.android.settings.development.qstile.DevelopmentTiles\$WirelessDebugging"
-                )
-            )
-        val devOptions = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
-            .putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
-        leftForSettings = false
-        if (!open(wireless)) {
-            open(devOptions)
-            return
-        }
-        // Some phones (e.g. Xiaomi) accept the shortcut but show nothing.
-        // If we are still on screen a moment later, open Developer options instead.
-        handler.postDelayed({
-            if (!leftForSettings && !isFinishing) {
-                Starter.log(this, "הקיצור למסך ניפוי באגים אלחוטי לא נפתח – פותח אפשרויות מפתח")
-                open(devOptions)
-            }
-        }, 1500)
+        startActivity(Intent(this, PairingActivity::class.java))
     }
 
     private var leftForSettings = false
