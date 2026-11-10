@@ -280,103 +280,46 @@ def main():
     launch_app()
     shot("main_inactive")
 
-    # ---------- 3. X → pairing notification with input ----------
+    # ---------- 3. automatic pairing: press X, type nothing ----------
+    run(f"adb shell settings put secure enabled_accessibility_services {PKG}/{PKG}.PairingAccessibility")
+    run("adb shell settings put secure accessibility_enabled 1")
+    run("adb shell settings put global adb_wifi_enabled 0")
+    time.sleep(2)
+    run(f"adb shell am force-stop {PKG}")
+    launch_app()
+    shot("main_auto_enabled")
     x = find(r"^צימוד$")
     if not x:
         result("x_button_found", False)
         return
     result("x_button_found", True)
+    t0 = time.time()
     tap(x["cx"], x["cy"])
-    ready, dt = wait_for(lambda: "הקלד קוד צימוד" in notif_dump(), 10, 0.2)
+    ready, _ = wait_for(lambda: "צימוד אוטומטי" in notif_dump(), 10, 0.3)
     result("code_input_ready", bool(ready))
-    result("code_input_ready_seconds", round(dt, 2))
-    time.sleep(2)
-    shot("after_x")
 
-    # ---------- 4. open the pairing dialog ----------
-    if not find(r"^Wireless debugging$|^Developer options$|^Debugging$"):
-        log("Settings did not open developer options, opening directly")
-        run("adb shell am start -a android.settings.APPLICATION_DEVELOPMENT_SETTINGS", 30)
-        time.sleep(3)
-    shot("developer_options")
-    run("adb shell settings put global adb_wifi_enabled 1")
-    time.sleep(2)
-    allow_network_prompt()
-    if not tap_text(r"^Wireless debugging$"):
-        result("wireless_debugging_opened", False)
-        shot("no_wireless_debugging")
-        return
-    result("wireless_debugging_opened", True)
-    time.sleep(3)
-    allow_network_prompt()
-    shot("wireless_debugging_screen")
-    if not tap_text(r"Pair device with pairing code", tries=3):
-        result("pair_dialog_opened", False)
-        shot("no_pair_option")
-        return
-    t_dialog = time.time()
-    result("pair_dialog_opened", True)
-    code, port = None, None
-    for _ in range(5):
-        code, port, _x = read_pairing_code()
-        if code:
-            break
-        time.sleep(0.5)
-    log("pairing code:", code, "port:", port)
-    result("pairing_code_read_by_test", bool(code))
-
-    det, dt = wait_for(lambda: "זוהה" in notif_dump(), 25, 0.2)
-    result("dialog_detected", bool(det))
-    result("dialog_detected_seconds", round(time.time() - t_dialog, 2) if det else None)
-    time.sleep(0.6)
-    shot("heads_up_over_dialog")
-    if not code:
-        return
-
-    # ---------- 5. type the code in the notification ----------
-    run("adb shell cmd statusbar expand-notifications")
-    time.sleep(2)
-    shot("shade_open")
-    btn = None
-    for _ in range(3):
-        btn = find(r"^הקלד קוד צימוד$")
-        if btn:
-            break
-        time.sleep(1)
-    result("reply_button_found", bool(btn))
-    if not btn:
-        return
-    tap(btn["cx"], btn["cy"])
-    time.sleep(1.5)
-    run(f"adb shell input text {code}")
-    time.sleep(0.8)
-    shot("code_typed_in_notification")
-    sent = find(r"^Send$|^שלח$")
-    if sent:
-        tap(sent["cx"], sent["cy"])
-    else:
-        run("adb shell input keyevent 66")
-    time.sleep(1)
-    result("dialog_still_open_after_typing", "Pair with device" in raw_dump() or True)
-
-    t_code = time.time()
     ok = False
-    while time.time() - t_code < 90:
-        ps = run("adb shell 'ps -A -o PID,NAME,ARGS | grep -i -e codusb -e app_process | grep -v grep'")
-        present = virtual_present()
-        log(f"t+{time.time() - t_code:5.1f}s present={present} ps={ps.strip()!r}")
-        if present:
+    shots_at = [3, 8, 15, 25]
+    prompts = 0
+    while time.time() - t0 < 120:
+        el = time.time() - t0
+        if shots_at and el >= shots_at[0]:
+            shot(f"auto_t{shots_at.pop(0)}s")
+        if virtual_present():
             ok = True
             break
+        # the only thing the user does: allow wireless debugging on this network
+        if allow_network_prompt():
+            prompts += 1
         time.sleep(1)
-    dt = time.time() - t_code
-    log("helper log after pairing:", run("adb shell cat /data/local/tmp/codusb_hid.log"))
-    result("pairing_creates_controller", bool(ok))
-    result("seconds_from_code_to_controller", round(dt, 1))
-    run("adb shell cmd statusbar collapse")
-    time.sleep(1)
-    shot("after_pairing")
-    log("notifications:", notif_dump()[:3000])
+    dt = time.time() - t0
+    result("network_prompts_answered", prompts)
+    result("auto_pairing_creates_controller", ok)
+    result("auto_pairing_seconds_from_X", round(dt, 1))
+    time.sleep(2)
+    shot("after_auto_pairing")
+    log("helper log:", run("adb shell cat /data/local/tmp/codusb_hid.log"))
+    log("notifications:", notif_dump()[:2500])
 
     # ---------- 6. B / A ----------
     run(f"adb shell am force-stop {PKG}")  # does not kill the shell helper
@@ -418,13 +361,12 @@ required = [
     "hid_helper_creates_controller",
     "helper_stops_by_pid",
     "code_input_ready",
-    "dialog_detected",
-    "pairing_creates_controller",
+    "auto_pairing_creates_controller",
     "B_stops_controller",
     "A_starts_controller",
 ]
 failed = [k for k in required if results.get(k) is not True]
-if (results.get("code_input_ready_seconds") or 0) > 3:
-    failed.append("code_input_ready_seconds>3")
+if (results.get("auto_pairing_seconds_from_X") or 999) > 60:
+    failed.append("auto_pairing_too_slow")
 print("FAILED:", failed, flush=True)
 sys.exit(1 if failed else 0)

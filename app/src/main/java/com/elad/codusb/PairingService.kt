@@ -50,6 +50,15 @@ class PairingService : Service() {
                     post(progress("מצמד..."))
                 }
             }
+            ACTION_AUTO -> {
+                val code = intent.getStringExtra(EXTRA_CODE) ?: ""
+                val port = intent.getIntExtra(EXTRA_PORT, 0)
+                if (!busy) {
+                    busy = true
+                    post(progress("הקוד נקרא אוטומטית ✓ מצמד..."))
+                    thread(name = "codusb-pair") { pair("$code $port") }
+                }
+            }
             ACTION_STOP -> finish(null)
             else -> begin()
         }
@@ -102,7 +111,11 @@ class PairingService : Service() {
     // ---------- flow ----------
 
     private fun begin() {
-        val n = input("פתח 'צימוד מכשיר באמצעות קוד צימוד' – ההתראה תקפוץ עם כפתור להקלדת הקוד.", false)
+        running = true
+        val n = if (PairingAccessibility.isEnabled(this))
+            input("צימוד אוטומטי – אל תיגע במסך. אם מופיעה שאלה על הרשת: סמן 'אפשר תמיד' ואשר.", false)
+        else
+            input("פתח 'צימוד מכשיר באמצעות קוד צימוד' – ההתראה תקפוץ עם כפתור להקלדת הקוד.", false)
         if (Build.VERSION.SDK_INT >= 34) {
             startForeground(Notif.ID_PAIR, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
@@ -119,8 +132,12 @@ class PairingService : Service() {
             if (isNew && !busy) {
                 if (!detectedOnce) Starter.log(this, "חלון הצימוד זוהה")
                 detectedOnce = true
-                // pop up over the Settings dialog, ready for the code
-                post(input("חלון הצימוד זוהה ✓ לחץ על הכפתור למטה והקלד את 6 הספרות.", true))
+                if (PairingAccessibility.isEnabled(this)) {
+                    post(input("חלון הצימוד זוהה ✓ קורא את הקוד אוטומטית...", false))
+                } else {
+                    // pop up over the Settings dialog, ready for the code
+                    post(input("חלון הצימוד זוהה ✓ לחץ על הכפתור למטה והקלד את 6 הספרות.", true))
+                }
             }
         }.also { it.start() }
 
@@ -168,6 +185,7 @@ class PairingService : Service() {
             }
 
             Starter.setPaired(this, true)
+            running = false // stop the automatic helper from opening another pairing dialog
             Starter.log(this, "הצימוד הצליח")
             mdns?.stop()
             mdns = null
@@ -181,6 +199,7 @@ class PairingService : Service() {
     }
 
     private fun finish(message: String?) {
+        running = false
         handler.removeCallbacksAndMessages(null)
         mdns?.stop()
         mdns = null
@@ -191,12 +210,20 @@ class PairingService : Service() {
     }
 
     override fun onDestroy() {
+        running = false
         mdns?.stop()
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
 
     companion object {
+        /** True while a pairing is in progress (the accessibility helper only acts then). */
+        @Volatile
+        var running = false
+
+        const val ACTION_AUTO = "com.elad.codusb.PAIR_AUTO"
+        const val EXTRA_CODE = "code"
+        const val EXTRA_PORT = "port"
         const val ACTION_START = "com.elad.codusb.PAIR_START"
         const val ACTION_REPLY = "com.elad.codusb.PAIR_REPLY"
         const val ACTION_STOP = "com.elad.codusb.PAIR_STOP"
