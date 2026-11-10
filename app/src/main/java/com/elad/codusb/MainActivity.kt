@@ -191,28 +191,16 @@ class MainActivity : Activity() {
         val paired = Starter.isPaired(this)
         val wss = Starter.hasSecureSettings(this)
         val popups = Starter.pairingPopupsAllowed(this)
-        val auto = PairingAccessibility.isEnabled(this)
 
         val card = Ui.card(this, "הגדרה חד-פעמית", Ui.BLUE)
         card.addView(Ui.lightRow(this, devOn, if (devOn) "אפשרויות מפתח פעילות" else "אפשרויות מפתח כבויות"))
         card.addView(Ui.lightRow(this, paired, if (paired) "צימוד בוצע" else "עוד לא בוצע צימוד"))
         card.addView(Ui.lightRow(this, wss, if (wss) "הפעלה אחרי הדלקה מאושרת" else "הפעלה אחרי הדלקה לא מאושרת"))
-        if (!paired && auto) {
+        if (!paired) {
             card.addView(
                 Ui.text(
                     this,
-                    "לחץ 'התחל צימוד' ואל תיגע במסך – האפליקציה תפתח את 'ניפוי באגים אלחוטי', תקרא את הקוד ותצמד לבד.\n" +
-                        "אם יופיע חלון 'לאפשר ניפוי באגים אלחוטי ברשת זו?' – סמן 'אפשר תמיד ברשת זו' ואשר."
-                ).apply { setPadding(0, dp(6), 0, 0) }
-            )
-        } else if (!paired) {
-            card.addView(
-                Ui.text(
-                    this,
-                    "1. לחץ 'התחל צימוד'. באפשרויות מפתח הדלק 'ניפוי באגים אלחוטי' – בחלון שקופץ סמן " +
-                        "'אפשר תמיד ברשת זו' ואשר.\n2. היכנס ל'ניפוי באגים אלחוטי' ובחר 'צימוד מכשיר באמצעות קוד צימוד'.\n" +
-                        "3. תוך שניות תקפוץ למעלה התראה – לחץ בה 'הקלד קוד צימוד' והקלד את 6 הספרות.\n" +
-                        "אל תצא ממסך ההגדרות – יציאה ממנו סוגרת את הקוד."
+                    "לחץ 'התחל צימוד' – ההסבר יופיע על המסך, צעד אחר צעד. זה לוקח פחות מדקה, ורק פעם אחת."
                 ).apply { setPadding(0, dp(6), 0, 0) }
             )
         }
@@ -222,9 +210,6 @@ class MainActivity : Activity() {
                 toast("לחץ 7 פעמים על 'גרסת MIUI/HyperOS' או 'מספר Build'")
             })
         }
-        card.addView(Ui.bumper(this, if (auto) "צימוד אוטומטי (בלי הקלדה): פעיל" else "הפעל צימוד אוטומטי – בלי הקלדה", auto) {
-            if (!auto) enableAutoPairing() else open(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-        })
         card.addView(Ui.bumper(this, if (popups) "התראות קופצות לצימוד: מאושרות" else "אשר התראות קופצות לצימוד", popups) {
             openPairingNotificationSettings()
         })
@@ -274,24 +259,6 @@ class MainActivity : Activity() {
 
     // ---------- actions ----------
 
-    private fun enableAutoPairing() {
-        AlertDialog.Builder(this)
-            .setTitle("צימוד אוטומטי")
-            .setMessage(
-                "כדי שהאפליקציה תקרא את קוד הצימוד בעצמה, צריך להפעיל לה הרשאת נגישות פעם אחת.\n\n" +
-                    "ההרשאה פועלת רק בתוך מסך ההגדרות ורק בזמן צימוד שהתחלת.\n\n" +
-                    "במסך שייפתח: 'אפליקציות שהורדו' ← 'שלט USB ל-COD – צימוד אוטומטי' ← הפעל.\n\n" +
-                    "אם האפשרות אפורה ('הגדרה מוגבלת'): לחץ 'פרטי האפליקציה' למטה ← שלוש הנקודות למעלה ← " +
-                    "'אפשר הגדרות מוגבלות', וחזור לכאן."
-            )
-            .setPositiveButton("פתח נגישות") { _, _ -> open(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
-            .setNeutralButton("פרטי האפליקציה") { _, _ ->
-                open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
-            }
-            .setNegativeButton("ביטול", null)
-            .show()
-    }
-
     private fun openPairingNotificationSettings() {
         val i = Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
             .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
@@ -316,6 +283,10 @@ class MainActivity : Activity() {
             toast("את קוד הצימוד מקלידים בהתראה – צריך לאשר התראות")
             return
         }
+        PairingGuide.show(this) { beginPairing() }
+    }
+
+    private fun beginPairing() {
         startForegroundService(Intent(this, PairingService::class.java).setAction(PairingService.ACTION_START))
         // Straight to the "Wireless debugging" screen (the same shortcut as long-pressing its
         // quick-settings tile); falls back to Developer options.
@@ -334,10 +305,7 @@ class MainActivity : Activity() {
                     .putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
             )
         }
-        toast(
-            if (PairingAccessibility.isEnabled(this)) "צימוד אוטומטי – אל תיגע במסך"
-            else "ניפוי באגים אלחוטי ← צימוד מכשיר באמצעות קוד צימוד"
-        )
+        toast("בחר 'צימוד מכשיר באמצעות קוד צימוד'")
     }
 
     private fun openXiaomiAutostart() {

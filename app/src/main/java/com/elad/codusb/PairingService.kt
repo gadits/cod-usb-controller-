@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.widget.RemoteViews
 import kotlin.concurrent.thread
 
 /**
@@ -19,10 +20,8 @@ import kotlin.concurrent.thread
  * Why a notification: Android closes the pairing dialog as soon as the Settings screen is left,
  * and since Android 12 it hides other apps' floating windows over Settings. The system's own
  * pop-up notification with an input field is the one thing that can be used on top of the dialog
- * without closing it.
- *
- * The input is ready the moment pairing starts, and pops up again on screen as soon as the
- * dialog is detected.
+ * without closing it — so it is made as big and clear as Android allows: coloured, large text,
+ * and it pops up by itself the moment the dialog opens.
  */
 class PairingService : Service() {
 
@@ -46,17 +45,7 @@ class PairingService : Service() {
                     busy = true
                     thread(name = "codusb-pair") { pair(text) }
                 } else {
-                    // keep the notification responsive even if a reply arrives twice
-                    post(progress("מצמד..."))
-                }
-            }
-            ACTION_AUTO -> {
-                val code = intent.getStringExtra(EXTRA_CODE) ?: ""
-                val port = intent.getIntExtra(EXTRA_PORT, 0)
-                if (!busy) {
-                    busy = true
-                    post(progress("הקוד נקרא אוטומטית ✓ מצמד..."))
-                    thread(name = "codusb-pair") { pair("$code $port") }
+                    post(progress("מצמד...", "רק רגע"))
                 }
             }
             ACTION_STOP -> finish(null)
@@ -67,28 +56,47 @@ class PairingService : Service() {
 
     // ---------- notifications ----------
 
-    private fun base(text: String, alert: Boolean): Notification.Builder =
-        Notification.Builder(this, Notif.CH_PAIR)
+    private fun views(title: String, text: String, hint: String?): RemoteViews =
+        RemoteViews(packageName, R.layout.notif_pair).apply {
+            setTextViewText(R.id.n_title, title)
+            setTextViewText(R.id.n_text, text)
+            if (hint != null) {
+                setTextViewText(R.id.n_hint, hint)
+                setViewVisibility(R.id.n_hint, android.view.View.VISIBLE)
+            } else {
+                setViewVisibility(R.id.n_hint, android.view.View.GONE)
+            }
+        }
+
+    private fun base(title: String, text: String, hint: String?, alert: Boolean): Notification.Builder {
+        val v = views(title, text, hint)
+        return Notification.Builder(this, Notif.CH_PAIR)
             .setSmallIcon(android.R.drawable.ic_menu_manage)
-            .setContentTitle("צימוד שלט USB ל-COD")
+            .setContentTitle(title)
             .setContentText(text)
-            .setStyle(Notification.BigTextStyle().bigText(text))
+            .setStyle(Notification.DecoratedCustomViewStyle())
+            .setCustomContentView(v)
+            .setCustomBigContentView(v)
+            .setCustomHeadsUpContentView(v)
+            .setColor(Ui.GREEN_DEEP)
+            .setColorized(true)
             .setOngoing(true)
             .setOnlyAlertOnce(!alert)
             .setCategory(Notification.CATEGORY_MESSAGE)
             .setPriority(Notification.PRIORITY_MAX)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
-            // no content intent on purpose: opening the app would close the pairing dialog
+        // no content intent on purpose: opening the app would close the pairing dialog
+    }
 
-    /** Notification with the "type pairing code" input. [alert] = pop up on screen again. */
-    private fun input(text: String, alert: Boolean): Notification {
+    /** Notification with the code input. [alert] = pop up on screen again. */
+    private fun input(title: String, text: String, alert: Boolean): Notification {
         val replyIntent = PendingIntent.getService(
             this, 1,
             Intent(this, PairingService::class.java).setAction(ACTION_REPLY),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
-        val remoteInput = RemoteInput.Builder(KEY_CODE).setLabel("6 ספרות").build()
+        val remoteInput = RemoteInput.Builder(KEY_CODE).setLabel("הקלד כאן את 6 הספרות").build()
         val reply = Notification.Action.Builder(null, ACTION_LABEL, replyIntent)
             .addRemoteInput(remoteInput)
             .setAllowGeneratedReplies(false)
@@ -98,13 +106,13 @@ class PairingService : Service() {
             Intent(this, PairingService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        return base(text, alert)
+        return base(title, text, "⬇  לחץ '$ACTION_LABEL'", alert)
             .addAction(reply)
             .addAction(Notification.Action.Builder(null, "ביטול", stopIntent).build())
             .build()
     }
 
-    private fun progress(text: String): Notification = base(text, false).build()
+    private fun progress(title: String, text: String): Notification = base(title, text, null, false).build()
 
     private fun post(n: Notification) = nm.notify(Notif.ID_PAIR, n)
 
@@ -112,10 +120,11 @@ class PairingService : Service() {
 
     private fun begin() {
         running = true
-        val n = if (PairingAccessibility.isEnabled(this))
-            input("צימוד אוטומטי – אל תיגע במסך. אם מופיעה שאלה על הרשת: סמן 'אפשר תמיד' ואשר.", false)
-        else
-            input("פתח 'צימוד מכשיר באמצעות קוד צימוד' – ההתראה תקפוץ עם כפתור להקלדת הקוד.", false)
+        val n = input(
+            "צימוד – שלב אחרון",
+            "בחר 'צימוד מכשיר באמצעות קוד צימוד'. ההתראה הזו תקפוץ שוב כשהקוד יופיע.",
+            false
+        )
         if (Build.VERSION.SDK_INT >= 34) {
             startForeground(Notif.ID_PAIR, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
@@ -132,12 +141,8 @@ class PairingService : Service() {
             if (isNew && !busy) {
                 if (!detectedOnce) Starter.log(this, "חלון הצימוד זוהה")
                 detectedOnce = true
-                if (PairingAccessibility.isEnabled(this)) {
-                    post(input("חלון הצימוד זוהה ✓ קורא את הקוד אוטומטית...", false))
-                } else {
-                    // pop up over the Settings dialog, ready for the code
-                    post(input("חלון הצימוד זוהה ✓ לחץ על הכפתור למטה והקלד את 6 הספרות.", true))
-                }
+                // pop up over the Settings dialog, ready for the code
+                post(input("הקלד כאן את קוד הצימוד", "את 6 הספרות שמופיעות בחלון שמאחורי ההתראה", true))
             }
         }.also { it.start() }
 
@@ -152,10 +157,10 @@ class PairingService : Service() {
             val code = numbers.firstOrNull { it.length == 6 } ?: ""
             val manualPort = numbers.firstOrNull { it.length in 4..5 }?.toIntOrNull() ?: 0
             if (code.length != 6) {
-                post(input("הקוד צריך להיות 6 ספרות. נסה שוב:", true))
+                post(input("הקוד צריך להיות 6 ספרות", "נסה שוב – הקלד את 6 הספרות מהחלון", true))
                 return
             }
-            post(progress("מצמד..."))
+            post(progress("מצמד...", "רק רגע"))
 
             var port = if (manualPort > 0) manualPort else pairingPort
             if (port <= 0) {
@@ -166,7 +171,8 @@ class PairingService : Service() {
             if (port <= 0) {
                 post(
                     input(
-                        "לא זיהיתי את חלון הצימוד. הקלד את הקוד, רווח, ואת המספר שאחרי ':' בשורה 'כתובת IP ויציאה'. לדוגמה: 123456 40373",
+                        "לא זיהיתי את חלון הצימוד",
+                        "הקלד את הקוד, רווח, ואת המספר שאחרי ':' בשורת 'כתובת IP ויציאה'. לדוגמה: 123456 40373",
                         true
                     )
                 )
@@ -180,17 +186,17 @@ class PairingService : Service() {
                 false
             }
             if (!ok) {
-                post(input("הצימוד נכשל – קוד שגוי או שפג תוקפו. פתח קוד חדש ונסה שוב:", true))
+                post(input("הקוד לא התקבל", "קוד שגוי או שפג תוקפו. סגור את החלון, פתח קוד חדש והקלד שוב", true))
                 return
             }
 
             Starter.setPaired(this, true)
-            running = false // stop the automatic helper from opening another pairing dialog
+            running = false
             Starter.log(this, "הצימוד הצליח")
             mdns?.stop()
             mdns = null
-            post(progress("✓ צומד! מתחבר..."))
-            val result = Starter.afterPairing(this) { msg -> post(progress(msg)) }
+            post(progress("✓ צומד!", "מפעיל את השלט..."))
+            val result = Starter.afterPairing(this) { msg -> post(progress("✓ צומד!", msg)) }
             Starter.log(this, result)
             handler.post { finish(result) }
         } finally {
@@ -217,13 +223,9 @@ class PairingService : Service() {
     }
 
     companion object {
-        /** True while a pairing is in progress (the accessibility helper only acts then). */
         @Volatile
         var running = false
 
-        const val ACTION_AUTO = "com.elad.codusb.PAIR_AUTO"
-        const val EXTRA_CODE = "code"
-        const val EXTRA_PORT = "port"
         const val ACTION_START = "com.elad.codusb.PAIR_START"
         const val ACTION_REPLY = "com.elad.codusb.PAIR_REPLY"
         const val ACTION_STOP = "com.elad.codusb.PAIR_STOP"
