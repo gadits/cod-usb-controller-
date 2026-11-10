@@ -309,9 +309,23 @@ class MainActivity : Activity() {
             return
         }
         startForegroundService(Intent(this, PairingService::class.java).setAction(PairingService.ACTION_START))
-        val dev = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
-            .putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
-        open(dev)
+        // Straight to the "Wireless debugging" screen (the same shortcut as long-pressing its
+        // quick-settings tile); falls back to Developer options.
+        val wireless = Intent("android.service.quicksettings.action.QS_TILE_PREFERENCES")
+            .setPackage("com.android.settings")
+            .putExtra(
+                Intent.EXTRA_COMPONENT_NAME,
+                ComponentName(
+                    "com.android.settings",
+                    "com.android.settings.development.qstile.DevelopmentTiles\$WirelessDebugging"
+                )
+            )
+        if (!open(wireless)) {
+            open(
+                Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+                    .putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
+            )
+        }
         toast(
             if (PairingAccessibility.isEnabled(this)) "צימוד אוטומטי – אל תיגע במסך"
             else "ניפוי באגים אלחוטי ← צימוד מכשיר באמצעות קוד צימוד"

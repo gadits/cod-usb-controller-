@@ -30,6 +30,7 @@ class PairingAccessibility : AccessibilityService() {
     private var lastToggleClick = 0L
     private var lastScroll = 0L
     private var scrolls = 0
+    private var scrollDown = true
 
     private val handler = Handler(Looper.getMainLooper())
 
@@ -71,6 +72,7 @@ class PairingAccessibility : AccessibilityService() {
         if (!PairingService.running) {
             lastCode = null
             scrolls = 0
+            scrollDown = true
             return
         }
         val roots = try {
@@ -80,6 +82,7 @@ class PairingAccessibility : AccessibilityService() {
             listOfNotNull(rootInActiveWindow)
         }
         if (roots.isEmpty()) return
+        roots.forEach { try { it.refresh() } catch (_: Throwable) {} }
 
         // 1. the pairing dialog: 6-digit code + "IP:port"
         for (root in roots) {
@@ -143,7 +146,7 @@ class PairingAccessibility : AccessibilityService() {
             }
         }
         // 4. not visible yet: scroll the settings list (not the top bar) down to it
-        if (now - lastScroll > 600 && scrolls < 40) {
+        if (now - lastScroll > 900 && scrolls < 60) {
             val lists = ArrayList<AccessibilityNodeInfo>()
             for (root in roots) collectScrollables(root, lists, 0)
             val ordered = lists.sortedWith(
@@ -153,13 +156,17 @@ class PairingAccessibility : AccessibilityService() {
                 }.thenByDescending { area(it) }
             )
             for (list in ordered) {
-                if (list.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)) {
+                val action = if (scrollDown) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
+                else AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
+                if (list.performAction(action)) {
                     scrolls++
                     lastScroll = now
-                    Log.i(TAG, "scrolled ${list.className} ($scrolls)")
+                    Log.i(TAG, "scrolled ${if (scrollDown) "down" else "up"} ${list.className} ($scrolls)")
                     return
                 }
             }
+            // reached the end without finding it: go the other way
+            scrollDown = !scrollDown
             lastScroll = now
         }
     }
