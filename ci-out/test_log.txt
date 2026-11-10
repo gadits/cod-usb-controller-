@@ -1,0 +1,67 @@
+Performing Streamed Install
+Success
+
+wifi: Wifi is enabled
+Wifi scanning is always available
+==== Primary ClientModeManager instance ====
+Wifi is connected to "AndroidWifi"
+WifiInfo: SSID: "AndroidWifi", BSSID: 02:15:b2:00:00:01, MAC: 02:15:b2:00:00:00, IP: /10.0.2.16, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 1, RSSI: -50, Link speed: 1Mbps, Tx Link speed: 1Mbps, Max Supported Tx Link speed: 54Mbps, Rx Link speed: 2Mbps, Max Supported Rx Link speed: 54Mbps, Frequency: 2437MHz, Net ID: 0, Metered hint: false, score: 60, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: 1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none>"AndroidWifi"openMLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>
+successfulTxPackets: 16094
+successfulTxPacketsPerSecond: 508.73886730059803
+retriedTxPackets: 0
+retriedTxPacketsPerSecond: 0.0
+lostTxPackets: 0
+lostTxPacketsPerSecond: 0.0
+successfulRxPackets: 82283
+successfulRxPacketsPerSecond: 1597.579862878793
+
+RESULT hid_helper_creates_controller = True
+helper log: Virtual Xbox Wireless Controller created successfully.
+uhid event 2
+uhid event 4
+
+screenshot ci-out/01_main_active.png
+screenshot ci-out/02_main_scrolled_1.png
+screenshot ci-out/03_main_scrolled_2.png
+screenshot ci-out/04_main_scrolled_3.png
+RESULT helper_stops_by_pid = True
+screenshot ci-out/05_main_inactive.png
+RESULT x_button_found = True
+screenshot ci-out/06_guide_dialog.png
+RESULT guide_dialog_shown = True
+screenshot ci-out/07_pairing_screen_opened.png
+pairing frame: (0, 0, 1080, 1187) | resumed: ['topResumedActivity=ActivityRecord{aab48b7 u0 com.android.settings/.SubSettings t11}', 'topResumedActivity=ActivityRecord{7422996 u0 com.elad.codusb/.PairingActivity t10}', 'ResumedActivity: ActivityRecord{aab48b7 u0 com.android.settings/.SubSettings t11}']
+RESULT split_screen = True
+RESULT code_input_ready = True
+RESULT code_input_ready_seconds = 0.02
+screenshot ci-out/08_after_x.png
+RESULT settings_opened = True
+screenshot ci-out/09_developer_options.png
+allowed wireless debugging on this network
+RESULT wireless_debugging_opened = True
+screenshot ci-out/10_wireless_debugging_screen.png
+RESULT pair_dialog_opened = True
+pairing code: 606373 port: 35539
+RESULT pairing_code_read_by_test = True
+RESULT dialog_detected = True
+RESULT dialog_detected_seconds = 2.52
+screenshot ci-out/11_heads_up_over_dialog.png
+pairing screen frame: (0, 0, 1080, 1187)
+RESULT read_button_found = True
+screenshot ci-out/12_capture_consent.png
+consent button: Start now
+screenshot ci-out/13_after_consent.png
+RESULT screen_read_code = 606373
+RESULT screen_read_correct = True
+RESULT screen_read_pairs = True
+RESULT screen_read_seconds = 21.3
+RESULT pairing_creates_controller = True
+RESULT paired_via = screen_read
+screenshot ci-out/14_after_pairing.png
+RESULT controller_survives_app_kill = True
+screenshot ci-out/15_main_after_pairing.png
+RESULT B_stops_controller = True
+RESULT A_starts_controller = True
+RESULT A_start_seconds = 1.4
+screenshot ci-out/16_main_end.png
+screenshot ci-out/17_log_end.png
