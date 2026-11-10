@@ -48,9 +48,13 @@ class PairingActivity : Activity() {
     private val codeListener: (String, Int) -> Unit = { c, port ->
         handler.post {
             readPort = port
-            code.setText(c) // 6 digits → submits by itself
+            filling = true
+            code.setText(c) // shown for checking — not sent until "צמד" is pressed
+            filling = false
+            show("זוהה הקוד $c – ודא שהוא זהה לקוד בחלון ולחץ 'צמד'", PairingUi.Kind.OK)
         }
     }
+    private var filling = false
     private var readPort = 0
 
     private fun dp(v: Int) = Ui.dp(this, v)
@@ -130,7 +134,7 @@ class PairingActivity : Activity() {
                 override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
                 override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
                 override fun afterTextChanged(s: Editable?) {
-                    if (s?.length == 6) submit() // all 6 digits typed → pair right away
+                    if (s?.length == 6 && !filling) submit() // all 6 digits typed → pair right away
                 }
             })
         }
@@ -139,8 +143,8 @@ class PairingActivity : Activity() {
         card.addView(Ui.bumper(this, "📷  קרא את הקוד מהמסך") { readFromScreen() })
         card.addView(Ui.text(
             this,
-            "בלי להקליד: פתח קודם את חלון הצימוד בהגדרות, ואז לחץ כאן. אנדרואיד ישאל אם לאשר צילום מסך – אשר. " +
-                "האפליקציה תצלם תמונה אחת, תזהה את הקוד ותצמד לבד. התמונה לא נשמרת ולא נשלחת לשום מקום.",
+            "אפשרות נוספת: פתח את חלון הצימוד בהגדרות ולחץ כאן. אחרי אישור צילום מסך, האפליקציה תזהה את הקוד ותכניס אותו לתיבה – " +
+                "בדוק שהוא נכון ולחץ 'צמד'. התמונה לא נשמרת ולא נשלחת לשום מקום.",
             12.5f, Ui.INK_FAINT
         ).apply { setPadding(dp(4), dp(8), dp(4), 0) })
         card.addView(Ui.bumper(this, "ביטול") {

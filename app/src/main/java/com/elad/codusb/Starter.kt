@@ -153,6 +153,15 @@ object Starter {
         }
     }
 
+    /** The wireless-debugging port as Android itself records it (readable on most phones). */
+    private fun tlsPortProperty(): Int? = try {
+        val c = Class.forName("android.os.SystemProperties")
+        (c.getMethod("get", String::class.java).invoke(null, "service.adb.tls.port") as String)
+            .toIntOrNull()?.takeIf { it > 0 }
+    } catch (_: Throwable) {
+        null
+    }
+
     fun connect(ctx: Context, timeoutMs: Long): AdbManager? {
         val m = AdbManager.get(ctx)
         try {
@@ -160,14 +169,26 @@ object Starter {
         } catch (_: Throwable) {
         }
         val deadline = System.currentTimeMillis() + timeoutMs
+        var round = 0
         while (System.currentTimeMillis() < deadline) {
-            val port = AdbMdns.findPort(ctx, AdbMdns.CONNECT, 8_000)
-            if (port != null) {
+            round++
+            // three independent ways to learn the port, so one failing source doesn't stop us
+            val fromProp = tlsPortProperty()
+            val fromMdns = AdbMdns.findPort(ctx, AdbMdns.CONNECT, if (fromProp != null) 3_000 else 10_000)
+            val fromLast = prefs(ctx).getInt("last_connect_port", 0).takeIf { it > 0 }
+            val ports = listOfNotNull(fromProp, fromMdns, fromLast).distinct()
+            if (round <= 2 || ports.isEmpty()) {
+                log(ctx, "חיבור (ניסיון $round): מערכת=${fromProp ?: "-"} רשת=${fromMdns ?: "-"} אחרון=${fromLast ?: "-"}")
+            }
+            for (port in ports) {
                 for (host in listOfNotNull(LOCALHOST, AdbMdns.lastHost).distinct()) {
                     try {
-                        if (m.connect(host, port)) return m
+                        if (m.connect(host, port)) {
+                            prefs(ctx).edit().putInt("last_connect_port", port).apply()
+                            return m
+                        }
                     } catch (t: Throwable) {
-                        log(ctx, "חיבור נכשל ($host:$port): ${t.javaClass.simpleName}: ${t.message}")
+                        if (round <= 2) log(ctx, "חיבור נכשל ($host:$port): ${t.javaClass.simpleName}: ${t.message}")
                         try {
                             m.disconnect()
                         } catch (_: Throwable) {
@@ -177,6 +198,7 @@ object Starter {
             }
             Thread.sleep(2_000)
         }
+        log(ctx, "לא הצלחתי להתחבר אחרי $round ניסיונות")
         return null
     }
 
@@ -270,7 +292,9 @@ object Starter {
     @Synchronized
     fun afterPairing(ctx: Context, progress: (String) -> Unit): String {
         progress("מתחבר...")
-        val m = connect(ctx, 30_000) ?: return "הצימוד הצליח אבל החיבור נכשל. ודא ש'ניפוי באגים אלחוטי' דולק ולחץ 'הפעל עכשיו'."
+        Thread.sleep(1_500) // give the system a moment after pairing
+        val m = connect(ctx, 45_000)
+            ?: return "הצימוד נשמר ✓ אבל החיבור לא הצליח כרגע. ודא ש'ניפוי באגים אלחוטי' דולק ולחץ A במסך הראשי – אין צורך לצמד שוב."
         val granted = grantSecureSettings(ctx, m)
         progress("יוצר שלט וירטואלי...")
         val ok = startHelperReliably(ctx, m)

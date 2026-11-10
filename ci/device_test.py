@@ -414,6 +414,22 @@ def main():
                     tap(c["cx"], c["cy"])
                     time.sleep(2)
                 shot("after_consent")
+                # the code is now filled into the box for checking; verify it and press "צמד"
+                filled = None
+                for _ in range(20):
+                    time.sleep(1)
+                    tap((frame[0] + frame[2]) // 2, frame[1] + 40)
+                    xml = raw_dump()
+                    for n in nodes(xml):
+                        if n["pkg"] == PKG and n["cls"] == "android.widget.EditText" and re.fullmatch(r"\d{6}", n["text"]):
+                            filled = n["text"]
+                    if filled:
+                        break
+                result("screen_read_code", filled)
+                result("screen_read_correct", filled == code)
+                pair_btn = find(r"צמד$")
+                if filled and pair_btn:
+                    tap(pair_btn["cx"], pair_btn["cy"])
                 read_ok, dt = wait_for(virtual_present, 60, 1.0)
                 result("screen_read_pairs", bool(read_ok))
                 result("screen_read_seconds", round(time.time() - t_read, 1))
@@ -536,6 +552,7 @@ required = [
     "dialog_detected",
     "pairing_creates_controller",
     "screen_read_pairs",
+    "screen_read_correct",
     "B_stops_controller",
     "A_starts_controller",
 ]

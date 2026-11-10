@@ -196,8 +196,10 @@ class CaptureService : Service() {
 
         /** Finds (code, port) in recognised screen text. */
         fun parse(all: String): Pair<String, Int?>? {
+            // best: a line that is exactly the 6-digit code (that's how the dialog shows it)
+            val onOwnLine = all.lines().map { it.replace(" ", "").trim() }.firstOrNull { Regex("^\\d{6}$").matches(it) }
             val clean = all.replace(Regex("(?<=\\d) (?=\\d{3}\\b)"), "") // "123 456" → "123456"
-            val code = CODE.find(clean)?.groupValues?.get(1) ?: return null
+            val code = onOwnLine ?: CODE.find(clean)?.groupValues?.get(1) ?: return null
             val port = PORT.find(all)?.groupValues?.get(1)?.toIntOrNull()
             return code to port
         }
