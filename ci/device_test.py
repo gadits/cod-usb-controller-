@@ -337,7 +337,7 @@ def main():
     time.sleep(2)
     raw_shot("after_auto_pairing")
     log("helper log:", run("adb shell cat /data/local/tmp/codusb_hid.log"))
-    log("notifications:", notif_dump()[:2500])
+    log("a11y log:", run("adb logcat -d -s CodUsbA11y", 30)[-4000:])
 
     # ---------- 6. B / A ----------
     run(f"adb shell am force-stop {PKG}")  # does not kill the shell helper

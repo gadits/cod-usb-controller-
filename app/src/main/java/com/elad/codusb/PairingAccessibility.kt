@@ -4,7 +4,11 @@ import android.accessibilityservice.AccessibilityService
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.graphics.Rect
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
+import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 
@@ -27,7 +31,43 @@ class PairingAccessibility : AccessibilityService() {
     private var lastScroll = 0L
     private var scrolls = 0
 
+    private val handler = Handler(Looper.getMainLooper())
+
+    /** Also act on a timer: if the screen stops changing there are no events to react to. */
+    private val tick = object : Runnable {
+        override fun run() {
+            if (PairingService.running) {
+                try {
+                    step()
+                } catch (t: Throwable) {
+                    Log.w(TAG, "step failed", t)
+                }
+            }
+            handler.postDelayed(this, 700)
+        }
+    }
+
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        Log.i(TAG, "connected")
+        handler.removeCallbacks(tick)
+        handler.post(tick)
+    }
+
+    override fun onDestroy() {
+        handler.removeCallbacks(tick)
+        super.onDestroy()
+    }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        try {
+            step()
+        } catch (t: Throwable) {
+            Log.w(TAG, "step failed", t)
+        }
+    }
+
+    private fun step() {
         if (!PairingService.running) {
             lastCode = null
             scrolls = 0
@@ -50,6 +90,7 @@ class PairingAccessibility : AccessibilityService() {
             if (code != null && port != null) {
                 if (code != lastCode) {
                     lastCode = code
+                    Log.i(TAG, "code read, port=$port")
                     Starter.log(this, "הקוד נקרא אוטומטית מחלון הצימוד")
                     try {
                         startService(
@@ -71,7 +112,10 @@ class PairingAccessibility : AccessibilityService() {
         for (root in roots) {
             val pair = findByText(root, PAIR_WORDS)
             if (pair != null) {
-                if (now - lastPairClick > 4_000 && clickRow(pair)) lastPairClick = now
+                if (now - lastPairClick > 4_000 && clickRow(pair)) {
+                    lastPairClick = now
+                    Log.i(TAG, "clicked pair-with-code")
+                }
                 return
             }
         }
@@ -80,7 +124,10 @@ class PairingAccessibility : AccessibilityService() {
         for (root in roots) {
             if (findByText(root, WIRELESS_SCREEN_SWITCH) != null) {
                 val sw = findUncheckedSwitch(root)
-                if (sw != null && now - lastToggleClick > 6_000 && clickRow(sw)) lastToggleClick = now
+                if (sw != null && now - lastToggleClick > 6_000 && clickRow(sw)) {
+                    lastToggleClick = now
+                    Log.i(TAG, "turned wireless debugging on")
+                }
                 return
             }
         }
@@ -88,23 +135,45 @@ class PairingAccessibility : AccessibilityService() {
         for (root in roots) {
             val wireless = findByText(root, WIRELESS_WORDS)
             if (wireless != null) {
-                if (now - lastWirelessClick > 4_000 && clickRow(wireless)) lastWirelessClick = now
+                if (now - lastWirelessClick > 4_000 && clickRow(wireless)) {
+                    lastWirelessClick = now
+                    Log.i(TAG, "clicked wireless debugging")
+                }
                 return
             }
         }
-        // 4. not visible yet: scroll the Developer options list down to it
+        // 4. not visible yet: scroll the settings list (not the top bar) down to it
         if (now - lastScroll > 600 && scrolls < 40) {
-            for (root in roots) {
-                val list = findScrollable(root)
-                if (list != null) {
-                    if (list.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)) {
-                        scrolls++
-                        lastScroll = now
-                    }
+            val lists = ArrayList<AccessibilityNodeInfo>()
+            for (root in roots) collectScrollables(root, lists, 0)
+            val ordered = lists.sortedWith(
+                compareByDescending<AccessibilityNodeInfo> {
+                    val c = it.className?.toString() ?: ""
+                    c.contains("RecyclerView") || c.contains("ListView")
+                }.thenByDescending { area(it) }
+            )
+            for (list in ordered) {
+                if (list.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)) {
+                    scrolls++
+                    lastScroll = now
+                    Log.i(TAG, "scrolled ${list.className} ($scrolls)")
                     return
                 }
             }
+            lastScroll = now
         }
+    }
+
+    private fun area(n: AccessibilityNodeInfo): Int {
+        val r = Rect()
+        n.getBoundsInScreen(r)
+        return r.width() * r.height()
+    }
+
+    private fun collectScrollables(n: AccessibilityNodeInfo?, out: MutableList<AccessibilityNodeInfo>, depth: Int) {
+        if (n == null || depth > 40) return
+        if (n.isScrollable) out.add(n)
+        for (i in 0 until n.childCount) collectScrollables(n.getChild(i), out, depth + 1)
     }
 
     private fun findScrollable(n: AccessibilityNodeInfo?, depth: Int = 0): AccessibilityNodeInfo? {
@@ -152,6 +221,7 @@ class PairingAccessibility : AccessibilityService() {
     }
 
     companion object {
+        private const val TAG = "CodUsbA11y"
         private const val SETTINGS = "com.android.settings"
         private val CODE = Regex("^\\d{6}$")
         private val ADDRESS = Regex("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}:(\\d{2,5})")
