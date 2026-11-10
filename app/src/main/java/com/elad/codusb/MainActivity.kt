@@ -118,6 +118,14 @@ class MainActivity : Activity() {
         orientation = LinearLayout.VERTICAL
         setPadding(dp(6), dp(6), dp(6), dp(4))
         addView(TextView(this@MainActivity).apply {
+            text = "© כל הזכויות שמורות לגדיץ"
+            textSize = 12.5f
+            typeface = Ui.MEDIUM
+            setTextColor(Ui.INK_FAINT)
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, dp(6))
+        }, LinearLayout.LayoutParams(-1, -2))
+        addView(TextView(this@MainActivity).apply {
             text = "COD USB"
             textSize = 30f
             typeface = Ui.BLACK
