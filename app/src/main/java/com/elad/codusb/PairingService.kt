@@ -225,9 +225,21 @@ class PairingService : Service() {
             mdns = null
             PairingUi.update("✓ צומד! מפעיל את השלט...", PairingUi.Kind.BUSY)
             post(progress("✓ צומד!", "מפעיל את השלט..."))
-            val result = Starter.afterPairing(this) { msg ->
-                PairingUi.update(msg, PairingUi.Kind.BUSY)
-                post(progress("✓ צומד!", msg))
+            // the whole "connect + start" step is capped at one minute
+            val ex = java.util.concurrent.Executors.newSingleThreadExecutor()
+            val result = try {
+                ex.submit<String> {
+                    Starter.afterPairing(this) { msg ->
+                        PairingUi.update(msg, PairingUi.Kind.BUSY)
+                        post(progress("✓ צומד!", msg))
+                    }
+                }.get(60, java.util.concurrent.TimeUnit.SECONDS)
+            } catch (_: java.util.concurrent.TimeoutException) {
+                "הצימוד נשמר ✓ אבל ההפעלה לקחה יותר מדי זמן. לחץ A במסך הראשי – אין צורך לצמד שוב."
+            } catch (t: Throwable) {
+                "הצימוד נשמר ✓ אבל ההפעלה נכשלה (${t.message}). לחץ A במסך הראשי."
+            } finally {
+                ex.shutdownNow()
             }
             Starter.log(this, result)
             val good = Starter.isVirtualPresent(this)

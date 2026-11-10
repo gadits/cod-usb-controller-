@@ -183,9 +183,21 @@ class PairingActivity : Activity() {
         super.onDestroy()
     }
 
+    /** Safety net: always show the latest status, even if a message was missed. */
+    private var shown: Pair<String, PairingUi.Kind>? = null
+    private val poll = object : Runnable {
+        override fun run() {
+            val l = PairingUi.last
+            if (l != null && l != shown && submitted) show(l.first, l.second)
+            handler.postDelayed(this, 700)
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         PairingUi.inSplit = isInMultiWindowMode
+        handler.removeCallbacks(poll)
+        handler.post(poll)
     }
 
     override fun onMultiWindowModeChanged(isInMultiWindowMode: Boolean) {
@@ -251,6 +263,7 @@ class PairingActivity : Activity() {
     }
 
     private fun show(text: String, kind: PairingUi.Kind) {
+        shown = text to kind
         status.text = text
         status.setTextColor(if (kind == PairingUi.Kind.ERROR) Ui.RED else Ui.INK)
         val color = when (kind) {

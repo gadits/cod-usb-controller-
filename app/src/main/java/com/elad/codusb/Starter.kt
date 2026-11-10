@@ -163,11 +163,8 @@ object Starter {
     }
 
     fun connect(ctx: Context, timeoutMs: Long): AdbManager? {
-        val m = AdbManager.get(ctx)
-        try {
-            m.disconnect()
-        } catch (_: Throwable) {
-        }
+        AdbManager.reset() // always start from a clean connection
+        var m = AdbManager.get(ctx)
         val deadline = System.currentTimeMillis() + timeoutMs
         var round = 0
         while (System.currentTimeMillis() < deadline) {
@@ -182,18 +179,15 @@ object Starter {
             }
             for (port in ports) {
                 for (host in listOfNotNull(LOCALHOST, AdbMdns.lastHost).distinct()) {
-                    try {
-                        if (m.connect(host, port)) {
-                            prefs(ctx).edit().putInt("last_connect_port", port).apply()
-                            return m
-                        }
-                    } catch (t: Throwable) {
-                        if (round <= 2) log(ctx, "חיבור נכשל ($host:$port): ${t.javaClass.simpleName}: ${t.message}")
-                        try {
-                            m.disconnect()
-                        } catch (_: Throwable) {
-                        }
+                    val r = connectWithTimeout(m, host, port, 10_000)
+                    if (r == true) {
+                        prefs(ctx).edit().putInt("last_connect_port", port).apply()
+                        return m
                     }
+                    if (round <= 2) log(ctx, if (r == null) "אין תשובה מ-$host:$port – מאפס" else "חיבור נכשל ($host:$port): ${lastConnectError}")
+                    // a stuck or failed connection is thrown away; continue with a fresh one
+                    AdbManager.reset()
+                    m = AdbManager.get(ctx)
                 }
             }
             Thread.sleep(2_000)
@@ -202,7 +196,41 @@ object Starter {
         return null
     }
 
+    @Volatile
+    private var lastConnectError: String = ""
+
+    /** true = connected, false = refused, null = no answer in time. Never blocks longer than [ms]. */
+    private fun connectWithTimeout(m: AdbManager, host: String, port: Int, ms: Long): Boolean? {
+        val ex = java.util.concurrent.Executors.newSingleThreadExecutor()
+        return try {
+            ex.submit<Boolean> { m.connect(host, port) }.get(ms, java.util.concurrent.TimeUnit.MILLISECONDS)
+        } catch (_: java.util.concurrent.TimeoutException) {
+            null
+        } catch (e: java.util.concurrent.ExecutionException) {
+            lastConnectError = "${e.cause?.javaClass?.simpleName}: ${e.cause?.message}"
+            false
+        } catch (t: Throwable) {
+            lastConnectError = "${t.javaClass.simpleName}: ${t.message}"
+            false
+        } finally {
+            ex.shutdownNow()
+        }
+    }
+
     fun shell(m: AdbManager, cmd: String): String {
+        val ex = java.util.concurrent.Executors.newSingleThreadExecutor()
+        return try {
+            ex.submit<String> { shellBlocking(m, cmd) }.get(20, java.util.concurrent.TimeUnit.SECONDS)
+        } catch (e: java.util.concurrent.TimeoutException) {
+            throw java.io.IOException("הפקודה לא הסתיימה בזמן")
+        } catch (e: java.util.concurrent.ExecutionException) {
+            throw (e.cause ?: e)
+        } finally {
+            ex.shutdownNow()
+        }
+    }
+
+    private fun shellBlocking(m: AdbManager, cmd: String): String {
         val stream = m.openStream("shell:$cmd")
         val out = java.io.ByteArrayOutputStream()
         return try {
@@ -291,6 +319,7 @@ object Starter {
     /** Called right after a successful pairing. */
     @Synchronized
     fun afterPairing(ctx: Context, progress: (String) -> Unit): String {
+        if (isVirtualPresent(ctx)) return "הכל מוכן ✓ השלט הווירטואלי כבר פעיל."
         progress("מתחבר...")
         Thread.sleep(1_500) // give the system a moment after pairing
         val m = connect(ctx, 45_000)

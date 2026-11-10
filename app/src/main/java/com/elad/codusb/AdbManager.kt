@@ -24,6 +24,7 @@ class AdbManager private constructor(context: Context) : AbsAdbConnectionManager
 
     init {
         setApi(Build.VERSION.SDK_INT)
+        setTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
         val keyFile = File(context.filesDir, "adb_key.pk8")
         val certFile = File(context.filesDir, "adb_cert.der")
         if (keyFile.exists() && certFile.exists()) {
@@ -61,6 +62,20 @@ class AdbManager private constructor(context: Context) : AbsAdbConnectionManager
     companion object {
         @Volatile
         private var instance: AdbManager? = null
+
+        /** Throw away a stuck connection; the next get() makes a fresh one (same saved key). */
+        fun reset() {
+            synchronized(this) {
+                val old = instance
+                instance = null
+                if (old != null) Thread {
+                    try {
+                        old.close()
+                    } catch (_: Throwable) {
+                    }
+                }.start()
+            }
+        }
 
         fun get(context: Context): AdbManager =
             instance ?: synchronized(this) {
