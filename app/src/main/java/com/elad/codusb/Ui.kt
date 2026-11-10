@@ -186,64 +186,73 @@ object Ui {
     /** Glossy 3D face button (A / B / X / Y) with a caption inside. */
     fun faceButton(ctx: Context, letter: String, caption: String, color: Int, deep: Int, sizeDp: Int, onClick: () -> Unit): View {
         val size = dp(ctx, sizeDp)
-        val cap = LayerDrawable(
-            arrayOf(
-                // dark rim
-                GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(Color.parseColor("#3A3D42"), Color.parseColor("#0D0E10")))
-                    .apply { shape = GradientDrawable.OVAL },
-                // coloured dome, lit from the top-left
-                GradientDrawable().apply {
-                    shape = GradientDrawable.OVAL
-                    gradientType = GradientDrawable.RADIAL_GRADIENT
-                    setGradientCenter(0.38f, 0.30f)
-                    gradientRadius = size * 0.78f
-                    colors = intArrayOf(lighten(color, 0.35f), color, deep)
-                },
-                // specular highlight
-                GradientDrawable(
-                    GradientDrawable.Orientation.TOP_BOTTOM,
-                    intArrayOf(Color.argb(150, 255, 255, 255), Color.argb(0, 255, 255, 255))
-                ).apply { shape = GradientDrawable.OVAL }
-            )
-        ).apply {
-            // thin rim on top, thick at the bottom: the button's body shows below its dome
-            val rim = dp(ctx, 4)
-            val body = dp(ctx, 9)
-            setLayerInset(1, rim, rim - dp(ctx, 1), rim, body)
-            setLayerInset(2, size / 5, rim + dp(ctx, 2), size / 5, size / 2 + dp(ctx, 4))
+        fun oval() = GradientDrawable().apply { shape = GradientDrawable.OVAL }
+        fun radial(cx: Float, cy: Float, r: Float, vararg c: Int) = oval().apply {
+            gradientType = GradientDrawable.RADIAL_GRADIENT
+            setGradientCenter(cx, cy)
+            gradientRadius = r
+            colors = c
+        }
+
+        // Recessed socket in the white shell: shaded at the top inside, lit at the bottom
+        val socket = GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(Color.parseColor("#BFC5CC"), Color.parseColor("#DCE0E4"), Color.parseColor("#F7F8FA"))
+        ).apply { shape = GradientDrawable.OVAL }
+        // soft shadow the cap casts into the socket
+        val castShadow = radial(0.5f, 0.56f, size * 0.5f, Color.argb(120, 0, 0, 0), Color.argb(55, 0, 0, 0), Color.argb(0, 0, 0, 0))
+        // the cap's side wall (same colour, darker) — gives the button its thickness, no black ring
+        val wall = GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(deep, darken(deep))
+        ).apply { shape = GradientDrawable.OVAL }
+        // the dome, lit from the top-left
+        val dome = radial(0.40f, 0.28f, size * 0.62f, lighten(color, 0.42f), color, deep)
+        // glossy reflection across the top of the dome
+        val gloss = GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(Color.argb(175, 255, 255, 255), Color.argb(20, 255, 255, 255))
+        ).apply { shape = GradientDrawable.OVAL }
+        // faint rim light along the bottom edge
+        val rimLight = radial(0.5f, 0.95f, size * 0.35f, Color.argb(70, 255, 255, 255), Color.argb(0, 255, 255, 255))
+
+        val s4 = dp(ctx, 4)
+        val cap = LayerDrawable(arrayOf(socket, castShadow, wall, dome, rimLight, gloss)).apply {
+            setLayerInset(1, s4, dp(ctx, 7), s4, 0)                       // shadow, shifted down
+            setLayerInset(2, dp(ctx, 7), dp(ctx, 6), dp(ctx, 7), dp(ctx, 5))   // side wall
+            setLayerInset(3, dp(ctx, 7), dp(ctx, 5), dp(ctx, 7), dp(ctx, 11))  // dome sits on top of the wall
+            setLayerInset(4, dp(ctx, 12), size / 2, dp(ctx, 12), dp(ctx, 12))
+            setLayerInset(5, size / 4, dp(ctx, 8), size / 4, size / 2 + dp(ctx, 6))
         }
         val pressedCap = LayerDrawable(
             arrayOf(
-                GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#0D0E10")) },
-                GradientDrawable().apply {
-                    shape = GradientDrawable.OVAL
-                    gradientType = GradientDrawable.RADIAL_GRADIENT
-                    setGradientCenter(0.5f, 0.6f)
-                    gradientRadius = size * 0.7f
-                    colors = intArrayOf(color, deep)
-                }
+                socket,
+                radial(0.5f, 0.5f, size * 0.5f, Color.argb(70, 0, 0, 0), Color.argb(0, 0, 0, 0)),
+                wall,
+                radial(0.5f, 0.45f, size * 0.6f, lighten(color, 0.15f), color, deep)
             )
-        ).apply { val rim = dp(ctx, 4); setLayerInset(1, rim, dp(ctx, 7), rim, dp(ctx, 4)) }
+        ).apply {
+            setLayerInset(1, s4, s4, s4, s4)
+            setLayerInset(2, dp(ctx, 7), dp(ctx, 8), dp(ctx, 7), dp(ctx, 6))
+            setLayerInset(3, dp(ctx, 7), dp(ctx, 8), dp(ctx, 7), dp(ctx, 8))   // pushed down: almost no wall
+        }
 
         val btn = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             background = pressable(cap, pressedCap)
             isClickable = true
-            elevation = dpf(ctx, 16f)
-            outlineSpotShadowColor = Color.BLACK
-            outlineAmbientShadowColor = Color.BLACK
-            setPadding(0, 0, 0, dp(ctx, 5))
-            outlineProvider = object : ViewOutlineProvider() {
-                override fun getOutline(view: View, outline: Outline) = outline.setOval(0, 0, view.width, view.height)
-            }
+            elevation = 0f
+            setPadding(0, 0, 0, dp(ctx, 6))
             addView(TextView(ctx).apply {
                 text = letter
                 textSize = 26f
                 typeface = BLACK
                 gravity = Gravity.CENTER
                 setTextColor(Color.WHITE)
-                setShadowLayer(dpf(ctx, 2f), 0f, dpf(ctx, 1.5f), Color.argb(140, 0, 0, 0))
+                // engraved look: dark shadow below, letter slightly translucent
+                setShadowLayer(dpf(ctx, 1.5f), 0f, dpf(ctx, 1.5f), Color.argb(150, 0, 0, 0))
+                alpha = 0.96f
                 includeFontPadding = false
             })
             addView(TextView(ctx).apply {

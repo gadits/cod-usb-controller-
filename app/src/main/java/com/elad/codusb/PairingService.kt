@@ -121,8 +121,8 @@ class PairingService : Service() {
     private fun begin() {
         running = true
         val n = input(
-            "צימוד – שלב אחרון",
-            "בחר 'צימוד מכשיר באמצעות קוד צימוד'. ההתראה הזו תקפוץ שוב כשהקוד יופיע.",
+            "ממתין לחלון הצימוד",
+            "בחר 'צימוד מכשיר באמצעות קוד צימוד'. התראה זו תופיע שוב כשהקוד יוצג.",
             false
         )
         if (Build.VERSION.SDK_INT >= 34) {
@@ -142,7 +142,7 @@ class PairingService : Service() {
                 if (!detectedOnce) Starter.log(this, "חלון הצימוד זוהה")
                 detectedOnce = true
                 // pop up over the Settings dialog, ready for the code
-                post(input("הקלד כאן את קוד הצימוד", "את 6 הספרות שמופיעות בחלון שמאחורי ההתראה", true))
+                post(input("הקלד כאן את קוד הצימוד", "הזן את הקוד בן 6 הספרות המוצג בחלון הצימוד", true))
             }
         }.also { it.start() }
 

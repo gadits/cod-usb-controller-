@@ -121,6 +121,7 @@ class MainActivity : Activity() {
 
     override fun onPause() {
         super.onPause()
+        leftForSettings = true
         try {
             unregisterReceiver(doneReceiver)
         } catch (_: Throwable) {
@@ -346,14 +347,24 @@ class MainActivity : Activity() {
                     "com.android.settings.development.qstile.DevelopmentTiles\$WirelessDebugging"
                 )
             )
+        val devOptions = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+            .putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
+        leftForSettings = false
         if (!open(wireless)) {
-            open(
-                Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
-                    .putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
-            )
+            open(devOptions)
+            return
         }
-        toast("בחר 'צימוד מכשיר באמצעות קוד צימוד'")
+        // Some phones (e.g. Xiaomi) accept the shortcut but show nothing.
+        // If we are still on screen a moment later, open Developer options instead.
+        handler.postDelayed({
+            if (!leftForSettings && !isFinishing) {
+                Starter.log(this, "הקיצור למסך ניפוי באגים אלחוטי לא נפתח – פותח אפשרויות מפתח")
+                open(devOptions)
+            }
+        }, 1500)
     }
+
+    private var leftForSettings = false
 
     private fun openXiaomiAutostart() {
         val miui = Intent().setComponent(
