@@ -163,10 +163,16 @@ object Starter {
         while (System.currentTimeMillis() < deadline) {
             val port = AdbMdns.findPort(ctx, AdbMdns.CONNECT, 8_000)
             if (port != null) {
-                try {
-                    if (m.connect(LOCALHOST, port)) return m
-                } catch (t: Throwable) {
-                    log(ctx, "חיבור נכשל ($port): ${t.message}")
+                for (host in listOfNotNull(LOCALHOST, AdbMdns.lastHost).distinct()) {
+                    try {
+                        if (m.connect(host, port)) return m
+                    } catch (t: Throwable) {
+                        log(ctx, "חיבור נכשל ($host:$port): ${t.javaClass.simpleName}: ${t.message}")
+                        try {
+                            m.disconnect()
+                        } catch (_: Throwable) {
+                        }
+                    }
                 }
             }
             Thread.sleep(2_000)

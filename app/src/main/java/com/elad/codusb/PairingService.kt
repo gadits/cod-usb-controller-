@@ -177,6 +177,7 @@ class PairingService : Service() {
 
             var port = if (manualPort > 0) manualPort else pairingPort
             if (port <= 0) {
+                PairingUi.update("מחפש את חלון הצימוד...", PairingUi.Kind.BUSY)
                 val until = System.currentTimeMillis() + 8_000
                 while (pairingPort <= 0 && System.currentTimeMillis() < until) Thread.sleep(200)
                 port = pairingPort
@@ -193,14 +194,25 @@ class PairingService : Service() {
                 return
             }
 
-            val ok = try {
-                AdbManager.get(this).pair("127.0.0.1", port, code)
-            } catch (t: Throwable) {
-                Starter.log(this, "צימוד נכשל: ${t.javaClass.simpleName}: ${t.message}")
-                false
+            // try the local address first, then this device's Wi-Fi address; never wait forever
+            val hosts = listOfNotNull("127.0.0.1", AdbMdns.lastHost).distinct()
+            var ok = false
+            for (host in hosts) {
+                PairingUi.update("מצמד...", PairingUi.Kind.BUSY)
+                Starter.log(this, "מנסה לצמד: $host:$port")
+                val r = pairWithTimeout(host, port, code, 15_000)
+                if (r == true) {
+                    ok = true
+                    break
+                }
+                Starter.log(this, if (r == null) "אין תשובה מ-$host:$port (15 שניות)" else "הצימוד נדחה ב-$host:$port")
+                if (r == false) break // a real answer (wrong/expired code): no point trying another address
             }
             if (!ok) {
-                PairingUi.update("הקוד לא התקבל – קוד שגוי או שפג תוקפו. נסה שוב", PairingUi.Kind.ERROR)
+                PairingUi.update(
+                    "הצימוד לא הצליח. ודא שחלון הקוד עדיין פתוח בהגדרות (אם נסגר – פתח קוד חדש) והקלד שוב",
+                    PairingUi.Kind.ERROR
+                )
                 post(input("הקוד לא התקבל", "קוד שגוי או שפג תוקפו. סגור את החלון, פתח קוד חדש והקלד שוב", true))
                 return
             }
@@ -223,6 +235,27 @@ class PairingService : Service() {
             handler.post { finish(result) }
         } finally {
             busy = false
+        }
+    }
+
+    /** true = paired, false = refused (wrong/expired code), null = no answer in time. */
+    private fun pairWithTimeout(host: String, port: Int, code: String, ms: Long): Boolean? {
+        val ex = java.util.concurrent.Executors.newSingleThreadExecutor()
+        return try {
+            ex.submit<Boolean> { AdbManager.get(this).pair(host, port, code) }
+                .get(ms, java.util.concurrent.TimeUnit.MILLISECONDS)
+        } catch (_: java.util.concurrent.TimeoutException) {
+            null
+        } catch (e: java.util.concurrent.ExecutionException) {
+            val c = e.cause
+            Starter.log(this, "שגיאת צימוד: ${c?.javaClass?.simpleName}: ${c?.message}")
+            // connection problems are "no answer" (try the next address); anything else is a refusal
+            if (c is java.io.IOException && c !is javax.net.ssl.SSLException) null else false
+        } catch (t: Throwable) {
+            Starter.log(this, "שגיאת צימוד: ${t.message}")
+            null
+        } finally {
+            ex.shutdownNow()
         }
     }
 

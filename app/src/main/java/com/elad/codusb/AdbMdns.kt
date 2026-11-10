@@ -58,7 +58,10 @@ class AdbMdns(context: Context, private val type: String, private val onPort: (I
                 }
 
                 override fun onServiceResolved(r: NsdServiceInfo) {
-                    if (isLocal(r.host) && r.port > 0) onPort(r.port)
+                    if (isLocal(r.host) && r.port > 0) {
+                        lastHost = r.host?.hostAddress
+                        onPort(r.port)
+                    }
                     latch.countDown()
                 }
             })
@@ -70,6 +73,10 @@ class AdbMdns(context: Context, private val type: String, private val onPort: (I
     companion object {
         const val PAIRING = "_adb-tls-pairing._tcp"
         const val CONNECT = "_adb-tls-connect._tcp"
+
+        /** Address of the last service found (this device's Wi-Fi address). */
+        @Volatile
+        var lastHost: String? = null
 
         fun isLocal(host: InetAddress?): Boolean {
             if (host == null) return true
