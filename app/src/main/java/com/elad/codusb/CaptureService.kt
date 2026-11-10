@@ -73,17 +73,41 @@ class CaptureService : Service() {
         val dpi = resources.displayMetrics.densityDpi
         val r = ImageReader.newInstance(w, h, PixelFormat.RGBA_8888, 2)
         reader = r
-        val startedAt = System.currentTimeMillis()
+        // Frames only arrive when the screen changes, so keep the latest one and use it after a
+        // short pause (the permission dialog needs a moment to disappear).
         r.setOnImageAvailableListener({ ir ->
-            val img = try {
-                ir.acquireLatestImage()
+            try {
+                ir.acquireLatestImage()?.let { img ->
+                    synchronized(this) {
+                        latest?.close()
+                        latest = img
+                    }
+                }
             } catch (_: Throwable) {
-                null
-            } ?: return@setOnImageAvailableListener
-            // skip the first frames (the permission dialog may still be fading out)
-            if (done || System.currentTimeMillis() - startedAt < 700) {
-                img.close()
-                return@setOnImageAvailableListener
+            }
+        }, handler)
+        tryTake(w, h, attempt = 0)
+        display = p.createVirtualDisplay(
+            "codusb-capture", w, h, dpi,
+            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, r.surface, null, handler
+        )
+    }
+
+    @Volatile
+    private var latest: android.media.Image? = null
+
+    private fun tryTake(w: Int, h: Int, attempt: Int) {
+        handler.postDelayed({
+            if (done) return@postDelayed
+            val img = synchronized(this) { latest.also { latest = null } }
+            if (img == null) {
+                if (attempt < 8) tryTake(w, h, attempt + 1)
+                else {
+                    done = true
+                    Starter.log(this, "לא התקבלה תמונה מהמסך")
+                    fail("לא התקבלה תמונה מהמסך – הקלד את הקוד ידנית")
+                }
+                return@postDelayed
             }
             done = true
             val bmp = try {
@@ -92,23 +116,15 @@ class CaptureService : Service() {
                 val full = Bitmap.createBitmap(w + rowPadding / plane.pixelStride, h, Bitmap.Config.ARGB_8888)
                 full.copyPixelsFromBuffer(plane.buffer)
                 Bitmap.createBitmap(full, 0, 0, w, h)
+            } catch (t: Throwable) {
+                Starter.log(this, "המרת התמונה נכשלה: ${t.message}")
+                null
             } finally {
                 img.close()
             }
             stopCapture()
-            recognize(bmp)
-        }, handler)
-        display = p.createVirtualDisplay(
-            "codusb-capture", w, h, dpi,
-            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, r.surface, null, handler
-        )
-        handler.postDelayed({
-            if (!done) {
-                done = true
-                stopCapture()
-                fail("לא התקבלה תמונה מהמסך – הקלד את הקוד ידנית")
-            }
-        }, 6_000)
+            if (bmp == null) fail("לא הצלחתי לקרוא את המסך – הקלד את הקוד ידנית") else recognize(bmp)
+        }, if (attempt == 0) 900L else 500L)
     }
 
     private fun recognize(bmp: Bitmap) {
@@ -132,6 +148,10 @@ class CaptureService : Service() {
     }
 
     private fun stopCapture() {
+        synchronized(this) {
+            latest?.close()
+            latest = null
+        }
         try {
             display?.release()
         } catch (_: Throwable) {
@@ -150,6 +170,7 @@ class CaptureService : Service() {
     }
 
     private fun fail(msg: String) {
+        Starter.log(this, msg)
         stopCapture()
         PairingUi.update(msg, PairingUi.Kind.ERROR)
         finishService()
