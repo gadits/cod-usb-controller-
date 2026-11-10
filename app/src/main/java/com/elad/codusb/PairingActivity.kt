@@ -221,6 +221,25 @@ class PairingActivity : Activity() {
     private fun devOptionsIntent() = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
         .putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
 
+    /**
+     * Other ways to reach the "Wireless debugging" screen, for phones (e.g. Xiaomi) that ignore the
+     * shortcut. Each one either opens the right screen, or fails / falls back to Developer options.
+     */
+    private fun alternativeWirelessIntents(): List<Intent> {
+        val fragment = "com.android.settings.development.WirelessDebuggingFragment"
+        return listOf(
+            // a dedicated activity some Settings builds have
+            Intent().setClassName("com.android.settings", "com.android.settings.Settings\$WirelessDebuggingActivity"),
+            // the Settings sub-page host, asked to show the Wireless debugging page
+            Intent().setClassName("com.android.settings", "com.android.settings.SubSettings")
+                .putExtra(":settings:show_fragment", fragment),
+            // Developer options, asked to show the Wireless debugging page (else stays on Developer options)
+            Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+                .putExtra(":settings:show_fragment", fragment)
+                .putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
+        )
+    }
+
     private fun launchBeside(i: Intent): Boolean = try {
         startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT))
         true
@@ -233,8 +252,16 @@ class PairingActivity : Activity() {
         // Xiaomi may accept the shortcut but show nothing: then open Developer options
         handler.postDelayed({
             if (!isFinishing && !isInMultiWindowMode && hasWindowFocus()) {
-                Starter.log(this, "הקיצור לניפוי באגים אלחוטי לא נפתח – פותח אפשרויות מפתח")
-                launchBeside(devOptionsIntent())
+                // try the other ways, in order; the first one the phone accepts is used
+                val ok = alternativeWirelessIntents().withIndex().firstOrNull { (_, i) ->
+                    i.resolveActivity(packageManager) != null && launchBeside(i)
+                }
+                if (ok != null) {
+                    Starter.log(this, "הקיצור לא נפתח – נפתח בדרך חלופית ${ok.index + 1}")
+                } else {
+                    Starter.log(this, "הקיצור לא נפתח – פותח אפשרויות מפתח")
+                    launchBeside(devOptionsIntent())
+                }
             }
         }, 1500)
         handler.postDelayed({

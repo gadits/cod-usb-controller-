@@ -17,6 +17,11 @@
         android:name="android.permission.WRITE_SECURE_SETTINGS"
         tools:ignore="ProtectedPermissions" />
 
+    <!-- to check which Settings screens this phone offers -->
+    <queries>
+        <package android:name="com.android.settings" />
+    </queries>
+
     <application
         android:name=".App"
         android:allowBackup="false"
