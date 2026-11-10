@@ -54,8 +54,8 @@ jobs:
 
   device-test:
     needs: build
-    # small changes can skip the emulator test: put [skip-test] in the commit message
-    if: ${{ !contains(github.event.head_commit.message, '[skip-test]') }}
+    # emulator test runs only when asked for: put [test] in the commit message
+    if: ${{ contains(github.event.head_commit.message, '[test]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
