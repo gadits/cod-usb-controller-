@@ -296,7 +296,7 @@ def main():
     tap(x["cx"], x["cy"])
     time.sleep(1.5)
     shot("guide_dialog")
-    g = find(r"^התחל צימוד$")
+    g = find(r"^(✓\s*)?התחל צימוד$")
     result("guide_dialog_shown", bool(g))
     if not g:
         return

@@ -175,7 +175,11 @@ object Ui {
             setTextColor(if (done) Color.WHITE else INK)
             if (done) setShadowLayer(dpf(ctx, 2f), 0f, dpf(ctx, 1f), Color.argb(110, 0, 0, 0))
             elevation = dpf(ctx, 9f)
-            outlineProvider = ViewOutlineProvider.BACKGROUND
+            // rounded shadow (the default one from a layered background came out square)
+            outlineProvider = object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: Outline) =
+                    outline.setRoundRect(0, 0, view.width, view.height, r)
+            }
             outlineSpotShadowColor = Color.BLACK
             outlineAmbientShadowColor = Color.BLACK
             layoutParams = LinearLayout.LayoutParams(-1, dp(ctx, 60)).apply { topMargin = dp(ctx, 12) }
