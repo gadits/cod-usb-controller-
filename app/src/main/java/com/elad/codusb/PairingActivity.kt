@@ -106,10 +106,16 @@ class PairingActivity : Activity() {
             addView(root)
         })
 
-        show("פותח את ההגדרות לידי...", PairingUi.Kind.INFO)
         PairingUi.listener = listener
-        startForegroundService(Intent(this, PairingService::class.java).setAction(PairingService.ACTION_START))
-        handler.postDelayed({ openSettingsBeside() }, 250)
+        val last = PairingUi.last
+        if (savedInstanceState != null && last != null) {
+            // recreated (e.g. by the system): just show where we are, don't start over
+            show(last.first, last.second)
+        } else {
+            show("פותח את ההגדרות לידי...", PairingUi.Kind.INFO)
+            startForegroundService(Intent(this, PairingService::class.java).setAction(PairingService.ACTION_START))
+            handler.postDelayed({ openSettingsBeside() }, 250)
+        }
     }
 
     override fun onDestroy() {
@@ -211,7 +217,11 @@ object PairingUi {
     @Volatile
     var done = false
 
+    @Volatile
+    var last: Pair<String, Kind>? = null
+
     fun update(text: String, kind: Kind) {
+        last = text to kind
         listener?.invoke(text, kind)
     }
 }

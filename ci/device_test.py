@@ -136,8 +136,14 @@ def screen_size():
 W, H = screen_size()
 
 
+SPLIT = [False]
+
+
 def scroll_down():
-    run(f"adb shell input swipe {W // 2} {int(H * 0.75)} {W // 2} {int(H * 0.3)} 350")
+    if SPLIT[0]:   # Settings is the lower half in split screen
+        run(f"adb shell input swipe {W // 2} {int(H * 0.92)} {W // 2} {int(H * 0.62)} 400")
+    else:
+        run(f"adb shell input swipe {W // 2} {int(H * 0.75)} {W // 2} {int(H * 0.3)} 350")
     time.sleep(1.0)
 
 
@@ -325,6 +331,7 @@ def main():
     time.sleep(4)
     shot("pairing_screen_opened")
     split = split_screen_active()
+    SPLIT[0] = split
     result("split_screen", split)
     ready, dt = wait_for(lambda: "הקלד קוד צימוד" in notif_dump(), 10, 0.2)
     result("code_input_ready", bool(ready))
@@ -400,7 +407,7 @@ def main():
             result("seconds_from_code_to_controller", round(dt, 1))
             time.sleep(2)
             shot("after_pairing")
-            log("app log:", run("adb logcat -d -s CodUsb", 20)[-1500:])
+            SPLIT[0] = False
             return_after_split = True
         else:
             return_after_split = False
