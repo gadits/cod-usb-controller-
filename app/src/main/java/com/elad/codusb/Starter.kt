@@ -180,11 +180,19 @@ object Starter {
 
     fun startHelper(ctx: Context, m: AdbManager): Boolean {
         val apk = ctx.applicationInfo.sourceDir
-        shell(
+        // Start fully detached (own session via setsid), then keep this shell open until the
+        // helper has written its pid file. Closing the shell too early used to kill the helper
+        // before it even started.
+        val out = shell(
             m,
-            "$KILL_HELPER; CLASSPATH='$apk' nohup app_process /system/bin --nice-name=$PROC " +
-                "com.elad.codusb.HidServer </dev/null >/dev/null 2>&1 &"
+            "$KILL_HELPER; rm -f /data/local/tmp/codusb_hid.log; " +
+                "S=\$(command -v setsid); " +
+                "CLASSPATH='$apk' \$S nohup app_process /system/bin --nice-name=$PROC " +
+                "com.elad.codusb.HidServer </dev/null >/dev/null 2>&1 & " +
+                "i=0; while [ \$i -lt 50 ] && [ ! -s $PID_FILE ]; do sleep 0.1; i=\$((i+1)); done; " +
+                "sleep 0.5; echo started=\$(cat $PID_FILE 2>/dev/null)"
         )
+        log(ctx, "הפעלת מנוע השלט: $out")
         repeat(16) {
             if (isVirtualPresent(ctx)) return true
             Thread.sleep(500)
@@ -204,6 +212,20 @@ object Starter {
         return false
     }
 
+    /** Start, then make sure the controller is still there a moment later; one retry if not. */
+    fun startHelperReliably(ctx: Context, m: AdbManager): Boolean {
+        repeat(2) { attempt ->
+            if (startHelper(ctx, m)) {
+                Thread.sleep(2_500)
+                if (isVirtualPresent(ctx)) return true
+                log(ctx, "השלט נעלם אחרי ההפעלה – מנסה שוב")
+            } else if (attempt == 0) {
+                log(ctx, "ניסיון נוסף להפעלת השלט")
+            }
+        }
+        return false
+    }
+
     fun stopHelper(m: AdbManager) {
         shell(m, "$KILL_HELPER; true")
     }
@@ -215,7 +237,7 @@ object Starter {
         val m = connect(ctx, 30_000) ?: return "הצימוד הצליח אבל החיבור נכשל. ודא ש'ניפוי באגים אלחוטי' דולק ולחץ 'הפעל עכשיו'."
         val granted = grantSecureSettings(ctx, m)
         progress("יוצר שלט וירטואלי...")
-        val ok = startHelper(ctx, m)
+        val ok = startHelperReliably(ctx, m)
         val base = if (ok) "הכל מוכן ✓ השלט הווירטואלי פעיל." else "הצימוד הצליח, אבל השלט הווירטואלי לא נוצר. פתח את האפליקציה לפרטים."
         return if (granted) base
         else "$base\nשים לב: ההפעלה האוטומטית אחרי הדלקה לא אושרה (בשיאומי צריך להדליק 'ניפוי באגים USB (הגדרות אבטחה)' ולצמד שוב)."
@@ -244,7 +266,7 @@ object Starter {
         if (!hasSecureSettings(ctx)) grantSecureSettings(ctx, m)
 
         progress("יוצר שלט וירטואלי...")
-        return if (startHelper(ctx, m)) "השלט הווירטואלי פעיל ✓ חבר את השלט ופתח את המשחק."
+        return if (startHelperReliably(ctx, m)) "השלט הווירטואלי פעיל ✓ חבר את השלט ופתח את המשחק."
         else "השלט הווירטואלי לא נוצר. פתח את האפליקציה לפרטים."
     }
 
