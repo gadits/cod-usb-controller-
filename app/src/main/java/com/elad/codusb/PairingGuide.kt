@@ -44,11 +44,10 @@ object PairingGuide {
         card.addView(Ui.text(a, L.t("יש להישאר במסך ההגדרות עד לסיום הצימוד – יציאה ממנו מבטלת את הקוד.", "Stay on the Settings screen until pairing finishes – leaving it cancels the code."), 13.5f, Ui.RED, Ui.MEDIUM).apply {
             setPadding(0, Ui.dp(a, 14), 0, 0)
         })
-        card.addView(Ui.bumper(a, L.t("התחל צימוד", "Start pairing"), true) {
+        card.addView(Pad.row(a, L.t("לא עכשיו", "Not now"), { d.dismiss() }, L.t("התחל צימוד", "Start pairing"), {
             d.dismiss()
             onStart()
-        })
-        card.addView(Ui.bumper(a, L.t("לא עכשיו", "Not now")) { d.dismiss() })
+        }))
 
         val holder = FrameLayout(a).apply {
             setPadding(Ui.dp(a, 16), Ui.dp(a, 24), Ui.dp(a, 16), Ui.dp(a, 24))

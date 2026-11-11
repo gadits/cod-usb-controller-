@@ -6,103 +6,114 @@ import android.graphics.*
 import android.view.MotionEvent
 import android.view.View
 
-/** Language switch drawn as a console D-pad: UP = EN, DOWN = HE. */
+/** Language switch drawn as a 3D console D-pad: UP = EN, DOWN = HE. The current language glows green. */
 @SuppressLint("ViewConstructor")
 class DpadLang(ctx: Context, private val onPick: (english: Boolean) -> Unit) : View(ctx) {
-    private val p = Paint(Paint.ANTI_ALIAS_FLAG)
     private val txt = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
         typeface = Ui.BLACK
     }
+    private val ink = Paint(Paint.ANTI_ALIAS_FLAG)
     private var pressed = 0 // -1 up, 1 down
+
+    private val graphite = Color.parseColor("#5A626B")
+    private val graphiteDeep = Color.parseColor("#2A2E33")
+    private val led = Color.parseColor("#5BF07D")
 
     init {
         contentDescription = "Language: up English, down Hebrew"
-        elevation = Ui.dpf(ctx, 6f)
-        outlineProvider = null
+        setLayerType(LAYER_TYPE_SOFTWARE, null)
     }
 
-    private fun cross(cx: Float, cy: Float, arm: Float, half: Float, r: Float): Path {
+    private fun cross(cx: Float, cy: Float, arm: Float, half: Float, r: Float, dy: Float): Path {
         val a = Path()
-        a.addRoundRect(RectF(cx - half, cy - arm, cx + half, cy + arm), r, r, Path.Direction.CW)
+        a.addRoundRect(RectF(cx - half, cy - arm + dy, cx + half, cy + arm + dy), r, r, Path.Direction.CW)
         val b = Path()
-        b.addRoundRect(RectF(cx - arm, cy - half, cx + arm, cy + half), r, r, Path.Direction.CW)
+        b.addRoundRect(RectF(cx - arm, cy - half + dy, cx + arm, cy + half + dy), r, r, Path.Direction.CW)
         a.op(b, Path.Op.UNION)
         return a
     }
 
     override fun onDraw(c: Canvas) {
-        val w = width.toFloat(); val h = height.toFloat()
-        val cx = w / 2; val cy = h / 2
-        val arm = minOf(w, h) / 2 - Ui.dpf(context, 4f)
-        val half = arm * 0.36f
-        val r = half * 0.42f
         val d = Ui.dpf(context, 1f)
+        val cx = width / 2f
+        val cy = height / 2f - 2 * d
+        val arm = minOf(width, height) / 2f - 8 * d
+        val half = arm * 0.40f
+        val r = half * 0.38f
+        val down = pressed != 0
+        val shape: (Float, Float) -> Path = { g, dy -> cross(cx, cy, arm + g, half + g, r + g, dy) }
+        val box = RectF(cx - arm, cy - arm, cx + arm, cy + arm)
+        Paint3D.key(c, context, shape, box, graphite, graphiteDeep, down)
 
-        // recessed socket in the white shell
-        p.shader = null
-        p.color = Ui.SHELL_EDGE
-        c.drawPath(cross(cx, cy + d, arm + 3 * d, half + 3 * d, r + 3 * d), p)
-        p.color = Ui.WELL
-        c.drawPath(cross(cx, cy, arm + 2 * d, half + 2 * d, r + 2 * d), p)
+        val faceDy = if (down) 1.2f * d else 0f
+        // the pressed arm tilts into the shell: shade it
+        if (down) {
+            c.save()
+            c.clipPath(shape(0f, faceDy))
+            ink.shader = null
+            ink.color = Color.argb(70, 0, 0, 0)
+            if (pressed < 0) c.drawRect(cx - half, cy - arm, cx + half, cy - half * 0.4f + faceDy, ink)
+            else c.drawRect(cx - half, cy + half * 0.4f + faceDy, cx + half, cy + arm + faceDy, ink)
+            c.restore()
+        }
+        // centre dimple (concave)
+        ink.shader = RadialGradient(cx, cy + faceDy - half * 0.15f, half * 0.55f,
+            Color.parseColor("#1E2226"), Color.parseColor("#454C54"), Shader.TileMode.CLAMP)
+        c.drawCircle(cx, cy + faceDy, half * 0.5f, ink)
+        ink.shader = null
 
-        // base lip (gives the 3D thickness)
-        p.color = Color.parseColor("#1C1F23")
-        c.drawPath(cross(cx, cy + 2.5f * d, arm, half, r), p)
-        // face
-        p.shader = LinearGradient(0f, cy - arm, 0f, cy + arm,
-            Color.parseColor("#4A5058"), Color.parseColor("#2A2E33"), Shader.TileMode.CLAMP)
-        val face = cross(cx, cy, arm, half, r)
-        c.drawPath(face, p)
-        p.shader = null
-
-        // lit arm for the current language
         val en = L.isEn
         for (up in listOf(true, false)) {
             val active = up == en
-            val top = if (up) cy - arm else cy + half * 0.55f
-            val bot = if (up) cy - half * 0.55f else cy + arm
-            val arc = RectF(cx - half + 2 * d, top + 2 * d, cx + half - 2 * d, bot - 2 * d)
-            val sink = if ((up && pressed == -1) || (!up && pressed == 1)) 1.5f * d else 0f
-            arc.offset(0f, sink)
-            if (active) {
-                p.shader = LinearGradient(0f, arc.top, 0f, arc.bottom,
-                    Ui.lighten(Ui.GREEN, 0.18f), Ui.GREEN_DEEP, Shader.TileMode.CLAMP)
-                c.drawRoundRect(arc, r * 0.8f, r * 0.8f, p)
-                p.shader = null
-            }
-            // arrow
-            val ay = if (up) arc.top + arc.height() * 0.24f else arc.bottom - arc.height() * 0.24f
-            val s = half * 0.32f
+            val sign = if (up) -1f else 1f
+            // engraved arrow near the tip
+            val ay = cy + faceDy + sign * (arm - half * 0.55f)
+            val s = half * 0.36f
             val tri = Path().apply {
-                if (up) { moveTo(cx, ay - s * 0.6f); lineTo(cx - s, ay + s * 0.5f); lineTo(cx + s, ay + s * 0.5f) }
-                else { moveTo(cx, ay + s * 0.6f); lineTo(cx - s, ay - s * 0.5f); lineTo(cx + s, ay - s * 0.5f) }
+                moveTo(cx, ay + sign * s * 0.65f)
+                lineTo(cx - s, ay - sign * s * 0.45f)
+                lineTo(cx + s, ay - sign * s * 0.45f)
                 close()
             }
-            p.color = if (active) Color.WHITE else Color.parseColor("#8A929B")
-            c.drawPath(tri, p)
-            txt.color = p.color
-            txt.textSize = half * 0.62f
-            val ty = if (up) arc.bottom - arc.height() * 0.2f else arc.top + arc.height() * 0.2f + txt.textSize * 0.8f
-            c.drawText(if (up) "EN" else "HE", cx, ty, txt)
+            // engraving: dark edge above, light edge below
+            ink.color = Color.argb(110, 0, 0, 0)
+            c.save(); c.translate(0f, -0.8f * d); c.drawPath(tri, ink); c.restore()
+            ink.color = Color.argb(60, 255, 255, 255)
+            c.save(); c.translate(0f, 0.8f * d); c.drawPath(tri, ink); c.restore()
+            ink.color = if (active) led else Color.parseColor("#3A4047")
+            if (active) ink.setShadowLayer(4 * d, 0f, 0f, led) else ink.clearShadowLayer()
+            c.drawPath(tri, ink)
+            ink.clearShadowLayer()
+
+            // label between the arrow and the centre
+            txt.textSize = half * 0.78f
+            val ty = cy + faceDy + sign * (half * 0.95f) + txt.textSize * 0.36f
+            val label = if (up) "EN" else "HE"
+            if (active) {
+                txt.color = led
+                txt.setShadowLayer(4 * d, 0f, 0f, led)
+            } else {
+                txt.color = Color.parseColor("#9AA3AC")
+                txt.setShadowLayer(0.8f * d, 0f, -0.8f * d, Color.argb(160, 0, 0, 0))
+            }
+            c.drawText(label, cx, ty, txt)
+            txt.clearShadowLayer()
         }
-        // centre dimple + gloss
-        p.color = Color.parseColor("#24282C")
-        c.drawCircle(cx, cy, half * 0.42f, p)
-        p.shader = LinearGradient(0f, cy - arm, 0f, cy, Color.argb(70, 255, 255, 255), Color.TRANSPARENT, Shader.TileMode.CLAMP)
-        c.drawPath(cross(cx, cy - d, arm - 2 * d, half - 3 * d, r), p)
-        p.shader = null
     }
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(e: MotionEvent): Boolean {
         val up = e.y < height / 2f
         when (e.actionMasked) {
-            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> { pressed = if (up) -1 else 1; invalidate() }
+            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
+                val p = if (up) -1 else 1
+                if (p != pressed) { pressed = p; invalidate() }
+            }
             MotionEvent.ACTION_UP -> {
                 pressed = 0; invalidate()
                 performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
-                if (up != L.isEn) onPick(up)
+                if (up != L.isEn) postDelayed({ onPick(up) }, 90)
             }
             MotionEvent.ACTION_CANCEL -> { pressed = 0; invalidate() }
         }

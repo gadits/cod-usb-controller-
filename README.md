@@ -28,6 +28,7 @@
 ## רשימת שינויים
 | גרסה | שינויים |
 |---|---|
+| 1.0.38 | הכפתור 'צימוד' פותח ישירות את מסך ניפוי הבאגים האלחוטי ומסמן בו את השורה 'צימוד מכשיר באמצעות קוד צימוד'; תיקון: לחיצה חוזרת על 'צימוד' נתקעה; חלון 'השלט כבר מוצמד' לפני צימוד מחדש; כפתורי START (אישור) ו-SELECT (חזרה) תלת-ממדיים; כפתור D-PAD תלת-ממדי חדש בשורה של שם האפליקציה; מספר גרסה ליד שורת הזכויות – לחיצה עליו מציגה את רשימת השינויים |
 | 1.0.37 | כל האפליקציה בעברית ובאנגלית; כפתור החלפת שפה בצורת D-PAD (למעלה EN, למטה HE); אייקון חדש של שלט טלסקופי לבן לנייד; עוד דרכים לפתוח ישירות את מסך "ניפוי באגים אלחוטי" |
 | 1.0.36 | שיאומי: ניסיון דרכים חלופיות לפתיחת "ניפוי באגים אלחוטי" לפני מעבר לאפשרויות מפתח |
 | 1.0.35 | סוף לתקיעות: הגבלת זמן של 10 שניות לכל ניסיון חיבור עם איפוס, 20 שניות לכל פקודה, 60 שניות להפעלה אחרי צימוד; דילוג על חיבור כשהשלט כבר פעיל |
@@ -79,6 +80,7 @@ From then on, press A to start the virtual controller. It also starts after the 
 ## Changelog
 | Version | Changes |
 |---|---|
+| 1.0.38 | The 'Pairing' button opens the Wireless debugging screen directly, with the 'Pair device with pairing code' row highlighted; fix: pressing 'Pairing' a second time got stuck; 'Already paired' window before pairing again; 3D START (confirm) and SELECT (back) keys; new 3D D-pad on the app-name line; version number next to the copyright line – tap it for the changelog |
 | 1.0.37 | Whole app in Hebrew and English; D-pad language switch (up EN, down HE); new white telescopic mobile-controller icon; more ways to open the Wireless debugging screen directly |
 | 1.0.36 | Xiaomi: try alternative ways to open Wireless debugging before falling back to Developer options |
 | 1.0.35 | No more hangs: 10s limit per connection attempt with reset, 20s per command, 60s for starting after pairing; skip connecting when the controller is already on |

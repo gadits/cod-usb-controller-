@@ -139,7 +139,10 @@ class PairingActivity : Activity() {
             })
         }
         card.addView(code, LinearLayout.LayoutParams(-1, -2))
-        card.addView(Ui.bumper(this, L.t("צמד", "Pair"), true) { submit() })
+        card.addView(Pad.row(this, L.t("ביטול", "Cancel"), {
+            startService(Intent(this, PairingService::class.java).setAction(PairingService.ACTION_STOP))
+            finish()
+        }, L.t("צמד", "Pair"), { submit() }))
         card.addView(Ui.bumper(this, L.t("📷  קרא את הקוד מהמסך", "📷  Read the code from the screen")) { readFromScreen() })
         card.addView(Ui.text(
             this,
@@ -147,10 +150,6 @@ class PairingActivity : Activity() {
                 L.t("בדוק שהוא נכון ולחץ 'צמד'. התמונה לא נשמרת ולא נשלחת לשום מקום.", "check it and tap 'Pair'. The image is never saved or sent anywhere."),
             12.5f, Ui.INK_FAINT
         ).apply { setPadding(dp(4), dp(8), dp(4), 0) })
-        card.addView(Ui.bumper(this, L.t("ביטול", "Cancel")) {
-            startService(Intent(this, PairingService::class.java).setAction(PairingService.ACTION_STOP))
-            finish()
-        })
         root.addView(card, LinearLayout.LayoutParams(-1, -2))
         setContentView(ScrollView(this).apply {
             background = GradientDrawable(
@@ -225,58 +224,82 @@ class PairingActivity : Activity() {
      * Other ways to reach the "Wireless debugging" screen, for phones (e.g. Xiaomi) that ignore the
      * shortcut. Each one either opens the right screen, or fails / falls back to Developer options.
      */
-    private fun alternativeWirelessIntents(): List<Intent> {
-        val fragment = "com.android.settings.development.WirelessDebuggingFragment"
-        return listOf(
-            // a dedicated activity some Settings builds have
-            Intent().setClassName("com.android.settings", "com.android.settings.Settings\$WirelessDebuggingActivity"),
-            // the Settings sub-page host, asked to show the Wireless debugging page
-            Intent().setClassName("com.android.settings", "com.android.settings.SubSettings")
-                .putExtra(":settings:show_fragment", fragment),
-            // the explicit Developer-options host, asked for the page (both extra spellings)
-            Intent().setClassName("com.android.settings", "com.android.settings.Settings\$DevelopmentSettingsDashboardActivity")
-                .putExtra(":settings:show_fragment", fragment)
-                .putExtra(":android:show_fragment", fragment),
-            // action names some vendor builds register
-            Intent("android.settings.WIRELESS_DEBUGGING_SETTINGS"),
-            Intent("android.settings.ADB_WIRELESS_SETTINGS"),
-            // Developer options, asked to show the Wireless debugging page (else scrolls to that row)
-            Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
-                .putExtra(":android:show_fragment", fragment)
-                .putExtra(":settings:show_fragment", fragment)
-                .putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
-        )
+    private val wirelessFragment = "com.android.settings.development.WirelessDebuggingFragment"
+
+    /** Ask Settings to scroll to and highlight the "Pair device with pairing code" row. */
+    private fun Intent.highlightPairRow(): Intent {
+        putExtra(":settings:fragment_args_key", "adb_pair_method_code_pref")
+        putExtra(":settings:show_fragment_args", Bundle().apply {
+            putString(":settings:fragment_args_key", "adb_pair_method_code_pref")
+        })
+        return this
     }
 
+    /**
+     * Every known way to reach the "Wireless debugging" screen, most direct first.
+     * A way the phone doesn't have fails instantly and the next one is tried.
+     * (No app is allowed to open the pairing-code window itself – Android only lets the user tap it.)
+     */
+    private fun directWirelessIntents(): List<Intent> = listOf(
+        // the Settings sub-page host, asked for the Wireless debugging page (works on Xiaomi)
+        Intent().setClassName("com.android.settings", "com.android.settings.SubSettings")
+            .putExtra(":settings:show_fragment", wirelessFragment).highlightPairRow(),
+        // a dedicated activity some Settings builds have
+        Intent().setClassName("com.android.settings", "com.android.settings.Settings\$WirelessDebuggingActivity")
+            .highlightPairRow(),
+        // action names some vendor builds register
+        Intent("android.settings.WIRELESS_DEBUGGING_SETTINGS").highlightPairRow(),
+        Intent("android.settings.ADB_WIRELESS_SETTINGS").highlightPairRow()
+    )
+
+    /** Ways that land near the page (Developer options), used if the direct ones do nothing. */
+    private fun alternativeWirelessIntents(): List<Intent> = listOf(
+        Intent().setClassName("com.android.settings", "com.android.settings.Settings\$DevelopmentSettingsDashboardActivity")
+            .putExtra(":settings:show_fragment", wirelessFragment)
+            .putExtra(":android:show_fragment", wirelessFragment)
+            .highlightPairRow(),
+        Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+            .putExtra(":android:show_fragment", wirelessFragment)
+            .putExtra(":settings:show_fragment", wirelessFragment)
+            .putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
+    )
+
     private fun launchBeside(i: Intent): Boolean = try {
-        startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT))
+        // a fresh Settings task each time: an old one left from a previous pairing could come back full screen
+        startActivity(i.addFlags(
+            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT
+        ))
         true
     } catch (_: Throwable) {
         false
     }
 
+    private fun tryLaunch(list: List<Intent>): Int =
+        list.indexOfFirst { i -> i.resolveActivity(packageManager) != null && launchBeside(i) }
+
     private fun openSettingsBeside() {
-        if (!launchBeside(wirelessIntent())) launchBeside(devOptionsIntent())
-        // Xiaomi may accept the shortcut but show nothing: then open Developer options
+        val direct = tryLaunch(directWirelessIntents())
+        val viaTile = direct < 0 && launchBeside(wirelessIntent())
+        Starter.log(this, when {
+            direct >= 0 -> L.t("נפתח מסך ניפוי באגים אלחוטי (דרך ${direct + 1})", "Opened Wireless debugging (way ${direct + 1})")
+            viaTile -> L.t("נפתח מסך ניפוי באגים אלחוטי (קיצור)", "Opened Wireless debugging (shortcut)")
+            else -> L.t("אין דרך ישירה – פותח אפשרויות מפתח", "No direct way – opening Developer options")
+        })
+        if (direct < 0 && !viaTile) launchBeside(devOptionsIntent())
+        // some phones accept a way but show nothing: then try the ones that land near the page
         handler.postDelayed({
             if (!isFinishing && !isInMultiWindowMode && hasWindowFocus()) {
-                // try the other ways, in order; the first one the phone accepts is used
-                val ok = alternativeWirelessIntents().withIndex().firstOrNull { (_, i) ->
-                    i.resolveActivity(packageManager) != null && launchBeside(i)
-                }
-                if (ok != null) {
-                    Starter.log(this, L.t("הקיצור לא נפתח – נפתח בדרך חלופית ${ok.index + 1}", "Shortcut didn't open – opened with alternative ${ok.index + 1}"))
-                } else {
-                    Starter.log(this, L.t("הקיצור לא נפתח – פותח אפשרויות מפתח", "Shortcut didn't open – opening Developer options"))
-                    launchBeside(devOptionsIntent())
-                }
+                val ok = tryLaunch(alternativeWirelessIntents())
+                Starter.log(this, if (ok >= 0) L.t("לא נפתח – נפתח בדרך חלופית ${ok + 1}", "Nothing opened – opened alternative ${ok + 1}")
+                else L.t("לא נפתח – פותח אפשרויות מפתח", "Nothing opened – opening Developer options"))
+                if (ok < 0) launchBeside(devOptionsIntent())
             }
         }, 1500)
         handler.postDelayed({
             if (!isFinishing && !isInMultiWindowMode) {
                 Starter.log(this, L.t("המכשיר לא פיצל את המסך – ההקלדה תתבצע בהתראה", "The device didn't split the screen – type the code in the notification"))
             }
-        }, 3000)
+        }, 3500)
     }
 
     private fun submit() {

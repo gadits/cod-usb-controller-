@@ -149,36 +149,57 @@ class MainActivity : Activity() {
         rightMargin = dp(2)
     }
 
-    private fun headerText(): View = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL
-        setPadding(dp(6), dp(6), dp(6), dp(4))
-        addView(TextView(this@MainActivity).apply {
-            text = L.t("© כל הזכויות שמורות לגדיץ", "© All rights reserved to Gadits")
-            textSize = 12.5f
-            typeface = Ui.MEDIUM
-            setTextColor(Ui.INK_FAINT)
-            gravity = Gravity.CENTER
-            setPadding(0, 0, 0, dp(6))
-        }, LinearLayout.LayoutParams(-1, -2))
-        addView(TextView(this@MainActivity).apply {
-            text = "COD USB"
-            textSize = 30f
-            typeface = Ui.BLACK
-            setTextColor(Ui.INK)
-        })
-        addView(Ui.text(this@MainActivity, L.t("כל שלט USB ב-Call of Duty Mobile", "Any USB controller in Call of Duty Mobile"), 15f, Ui.INK_SOFT, Ui.MEDIUM))
-    }
+    private fun versionName(): String = try {
+        packageManager.getPackageInfo(packageName, 0).versionName ?: ""
+    } catch (_: Throwable) { "" }
 
     private fun header(): View = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
+        orientation = LinearLayout.VERTICAL
+        setPadding(dp(6), dp(6), dp(6), dp(4))
         clipChildren = false
         clipToPadding = false
-        addView(headerText(), LinearLayout.LayoutParams(0, -2, 1f))
-        addView(DpadLang(this@MainActivity) { english ->
-            L.set(this@MainActivity, english)
-            recreate()
-        }, LinearLayout.LayoutParams(dp(84), dp(84)))
+        // © line + version (tap the version for the changelog)
+        addView(LinearLayout(this@MainActivity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            addView(TextView(this@MainActivity).apply {
+                text = L.t("© כל הזכויות שמורות לגדיץ", "© All rights reserved to Gadits")
+                textSize = 12.5f
+                typeface = Ui.MEDIUM
+                setTextColor(Ui.INK_FAINT)
+            })
+            addView(TextView(this@MainActivity).apply {
+                text = "v" + versionName()
+                textSize = 12f
+                typeface = Ui.BOLD
+                setTextColor(Ui.GREEN_DEEP)
+                textDirection = View.TEXT_DIRECTION_LTR
+                background = Ui.rounded(Color.parseColor("#E3F5E7"), Ui.dpf(this@MainActivity, 10f), Color.parseColor("#BFE6C8"), dp(1))
+                setPadding(dp(9), dp(2), dp(9), dp(3))
+                contentDescription = L.t("גרסה ורשימת שינויים", "Version and changelog")
+                setOnClickListener { Changelog.show(this@MainActivity) }
+            }, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
+            setPadding(0, 0, 0, dp(2))
+        }, LinearLayout.LayoutParams(-1, -2))
+        // app name and the language D-pad on one line, same height
+        addView(LinearLayout(this@MainActivity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            clipChildren = false
+            clipToPadding = false
+            addView(TextView(this@MainActivity).apply {
+                text = "COD USB"
+                textSize = 34f
+                typeface = Ui.BLACK
+                setTextColor(Ui.INK)
+                includeFontPadding = false
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(DpadLang(this@MainActivity) { english ->
+                L.set(this@MainActivity, english)
+                recreate()
+            }, LinearLayout.LayoutParams(dp(76), dp(76)))
+        }, LinearLayout.LayoutParams(-1, -2))
+        addView(Ui.text(this@MainActivity, L.t("כל שלט USB ב-Call of Duty Mobile", "Any USB controller in Call of Duty Mobile"), 15f, Ui.INK_SOFT, Ui.MEDIUM))
     }
 
     private fun statusCard(): View {
@@ -343,11 +364,37 @@ class MainActivity : Activity() {
             toast(L.t("את קוד הצימוד מקלידים בהתראה – צריך לאשר התראות", "Notifications are needed for pairing – please allow them"))
             return
         }
+        if (Starter.isPaired(this)) {
+            // already paired: ask before starting over
+            Pad.dialog(
+                this, L.t("השלט כבר מוצמד", "Already paired"), Ui.GREEN,
+                { card ->
+                    card.addView(Ui.lightRow(this, true, L.t("הצימוד בוצע בהצלחה", "Paired successfully")))
+                    card.addView(Ui.text(
+                        this,
+                        L.t("השלט הווירטואלי כבר הוצמד בהצלחה למכשיר הזה, ואין צורך לצמד שוב – לחיצה על A מפעילה אותו.",
+                            "The virtual controller is already paired with this device, so there's no need to pair again – press A to start it."),
+                        15f, Ui.INK_SOFT
+                    ).apply { setPadding(0, dp(6), 0, dp(4)) })
+                    card.addView(Ui.text(
+                        this,
+                        L.t("צימוד מחדש נדרש רק אם A מפסיק לעבוד. האם להתחיל את הצימוד מחדש בכל זאת?",
+                            "Pairing again is only needed if A stops working. Start pairing again anyway?"),
+                        15.5f, Ui.INK, Ui.BOLD
+                    ).apply { setPadding(0, dp(8), 0, 0) })
+                },
+                back = L.t("חזור", "Back"),
+                confirm = L.t("צמד מחדש", "Pair again")
+            ) { beginPairing() }
+            return
+        }
         PairingGuide.show(this) { beginPairing() }
     }
 
     private fun beginPairing() {
-        startActivity(Intent(this, PairingActivity::class.java))
+        PairingUi.last = null
+        PairingUi.done = false
+        startActivity(Intent(this, PairingActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP))
     }
 
     private var leftForSettings = false
