@@ -203,7 +203,7 @@ class PairingActivity : Activity() {
         super.onMultiWindowModeChanged(isInMultiWindowMode)
         PairingUi.inSplit = isInMultiWindowMode
         if (isInMultiWindowMode && !submitted) {
-            show(L.t("בחר בהגדרות 'צימוד מכשיר באמצעות קוד צימוד' והקלד כאן את 6 הספרות", "In Settings choose 'Pair device with pairing code' and type the 6 digits here"), PairingUi.Kind.INFO)
+            show(L.t("בחר בהגדרות 'צמד מכשיר באמצעות קוד צימוד' והקלד כאן את 6 הספרות", "In Settings choose 'Pair device with pairing code' and type the 6 digits here"), PairingUi.Kind.INFO)
         }
     }
 

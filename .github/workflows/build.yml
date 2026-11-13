@@ -32,12 +32,15 @@ jobs:
         run: |
           set -o pipefail
           gradle assembleRelease --stacktrace --no-daemon 2>&1 | tee "$RUNNER_TEMP/build.log"
-          cp app/build/outputs/apk/release/app-release.apk CodUsbController.apk
+          cp app/build/outputs/apk/standard/release/app-standard-release.apk CodUsbController.apk
+          cp app/build/outputs/apk/auto/release/app-auto-release.apk AutoCodUsb.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: apk
-          path: CodUsbController.apk
+          path: |
+            CodUsbController.apk
+            AutoCodUsb.apk
 
       - name: Save build log on failure
         if: failure()
@@ -112,18 +115,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest CodUsbController.apk \
+          gh release create latest CodUsbController.apk AutoCodUsb.apk \
             --title "גרסה 1.0.${{ github.run_number }}" \
-            --notes "להורדה: CodUsbController.apk" \
+            --notes "CodUsbController.apk – הרגילה | AutoCodUsb.apk – Auto COD USB" \
             --latest
 
       - name: Update second download link
         run: |
-          mkdir /tmp/dl && cp CodUsbController.apk /tmp/dl/
+          mkdir /tmp/dl && cp CodUsbController.apk AutoCodUsb.apk /tmp/dl/
           cd /tmp/dl
           git init -q -b download
           git config user.name "ci"
           git config user.email "ci@users.noreply.github.com"
-          git add CodUsbController.apk
+          git add CodUsbController.apk AutoCodUsb.apk
           git commit -q -m "APK 1.0.${{ github.run_number }}"
           git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" download

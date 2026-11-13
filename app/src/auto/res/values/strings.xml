@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Auto COD USB</string>
+    <string name="a11y_label">Auto COD USB – צימוד אוטומטי / automatic pairing</string>
+    <string name="a11y_description">פותח את חלון "צמד מכשיר באמצעות קוד צימוד" בהגדרות, קורא את הקוד ומבצע את הצימוד בשבילך. פועל רק בתוך אפליקציית ההגדרות ורק בזמן צימוד. לא קורא שום מידע אחר.\n\nOpens "Pair device with pairing code" in Settings, reads the code and pairs for you. Works only inside the Settings app and only while pairing. Reads nothing else.</string>
+</resources>

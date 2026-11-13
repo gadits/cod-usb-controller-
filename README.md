@@ -9,6 +9,12 @@
 ## הורדה
 [CodUsbController.apk](https://raw.githubusercontent.com/gadits/cod-usb-controller-/download/CodUsbController.apk) — הקישור הזה תמיד מוביל לגרסה האחרונה ([דף הגרסאות](https://github.com/gadits/cod-usb-controller-/releases/latest))
 
+### Auto COD USB – הכל אוטומטי
+[AutoCodUsb.apk](https://raw.githubusercontent.com/gadits/cod-usb-controller-/download/AutoCodUsb.apk) — אפליקציה נפרדת (אפשר להתקין לצד הרגילה) שמצמדת לבד בעזרת שירות נגישות: פותחת את חלון הצימוד, קוראת את הקוד ומצמדת, בלי הקלדה. בנוסף מדליקה מחדש את "ניפוי באגים אלחוטי" בכל חיבור WiFi.
+- Play Protect יזהיר בהתקנה (בגלל הנגישות) – בוחרים "התקן בכל זאת".
+- באנדרואיד 13 ומעלה: מידע על האפליקציה ← ⋮ ← "אפשר הגדרות מוגבלות", ואז להדליק את Auto COD USB בהגדרות הנגישות.
+- לכל אפליקציה צימוד משלה. אם שתיהן מותקנות, בחיבור שלט אנדרואיד ישאל איזו לפתוח.
+
 ## איך זה עובד
 האפליקציה מתחברת ל"ניפוי באגים אלחוטי" של המכשיר עצמו, ודרכו יוצרת שלט וירטואלי בשם
 "Xbox Wireless Controller". המשחק מזהה אותו, עובר למצב שלט, ומקבל גם את הלחיצות מהשלט שמחובר ב-USB.
@@ -16,7 +22,7 @@
 ## הגדרה חד-פעמית
 1. אפשרויות מפתח: הגדרות ← מידע על הטלפון ← 7 לחיצות על "מספר Build" / "גרסת MIUI".
 2. באפליקציה: לחיצה על X (צימוד) ← "התחל צימוד". ההגדרות נפתחות במסך מפוצל ליד תיבת הקוד.
-3. להדליק "ניפוי באגים אלחוטי" ← "צימוד מכשיר באמצעות קוד צימוד" ← להקליד את 6 הספרות בתיבה (או "קרא את הקוד מהמסך").
+3. להדליק "ניפוי באגים אלחוטי" ← "צמד מכשיר באמצעות קוד צימוד" ← להקליד את 6 הספרות בתיבה (או "קרא את הקוד מהמסך").
 4. בשיאומי: לאשר "הפעלה אוטומטית" ולבטל את הגבלת הסוללה.
 
 חיבור שלט USB מפעיל את השלט הווירטואלי אוטומטית (בפעם הראשונה אנדרואיד שואל – לסמן "השתמש כברירת מחדל" ולאשר).
@@ -30,8 +36,9 @@
 ## רשימת שינויים
 | גרסה | שינויים |
 |---|---|
+| 1.0.40 | אפליקציה חדשה נוספת: Auto COD USB – מצמדת לבד (פותחת את חלון הצימוד, קוראת את הקוד ומצמדת), ומדליקה מחדש את ניפוי הבאגים האלחוטי בכל חיבור WiFi; אייקון כחול עם ברק; הנוסח 'צמד מכשיר באמצעות קוד צימוד' כמו בשיאומי |
 | 1.0.39 | חיבור שלט USB מפעיל אוטומטית את השלט הווירטואלי, גם כשהאפליקציה סגורה |
-| 1.0.38 | הכפתור 'צימוד' פותח ישירות את מסך ניפוי הבאגים האלחוטי ומסמן בו את השורה 'צימוד מכשיר באמצעות קוד צימוד'; תיקון: לחיצה חוזרת על 'צימוד' נתקעה; חלון 'השלט כבר מוצמד' לפני צימוד מחדש; כפתורי START (אישור) ו-SELECT (חזרה) תלת-ממדיים; כפתור D-PAD תלת-ממדי חדש בשורה של שם האפליקציה; מספר גרסה ליד שורת הזכויות – לחיצה עליו מציגה את רשימת השינויים |
+| 1.0.38 | הכפתור 'צימוד' פותח ישירות את מסך ניפוי הבאגים האלחוטי ומסמן בו את השורה 'צמד מכשיר באמצעות קוד צימוד'; תיקון: לחיצה חוזרת על 'צימוד' נתקעה; חלון 'השלט כבר מוצמד' לפני צימוד מחדש; כפתורי START (אישור) ו-SELECT (חזרה) תלת-ממדיים; כפתור D-PAD תלת-ממדי חדש בשורה של שם האפליקציה; מספר גרסה ליד שורת הזכויות – לחיצה עליו מציגה את רשימת השינויים |
 | 1.0.37 | כל האפליקציה בעברית ובאנגלית; כפתור החלפת שפה בצורת D-PAD (למעלה EN, למטה HE); אייקון חדש של שלט טלסקופי לבן לנייד; עוד דרכים לפתוח ישירות את מסך "ניפוי באגים אלחוטי" |
 | 1.0.36 | שיאומי: ניסיון דרכים חלופיות לפתיחת "ניפוי באגים אלחוטי" לפני מעבר לאפשרויות מפתח |
 | 1.0.35 | סוף לתקיעות: הגבלת זמן של 10 שניות לכל ניסיון חיבור עם איפוס, 20 שניות לכל פקודה, 60 שניות להפעלה אחרי צימוד; דילוג על חיבור כשהשלט כבר פעיל |
@@ -64,6 +71,12 @@ An Android app that lets you play COD Mobile with any USB-C controller, without 
 ## Download
 [CodUsbController.apk](https://raw.githubusercontent.com/gadits/cod-usb-controller-/download/CodUsbController.apk) — this link always points to the latest version ([releases page](https://github.com/gadits/cod-usb-controller-/releases/latest))
 
+### Auto COD USB – fully automatic
+[AutoCodUsb.apk](https://raw.githubusercontent.com/gadits/cod-usb-controller-/download/AutoCodUsb.apk) — a separate app (can be installed next to the regular one) that pairs by itself using an accessibility service: it opens the pairing window, reads the code and pairs, with no typing. It also turns Wireless debugging back on every time Wi-Fi connects.
+- Play Protect warns when installing (because of the accessibility service) – choose "Install anyway".
+- On Android 13+: App info → ⋮ → "Allow restricted settings", then turn on Auto COD USB in Accessibility settings.
+- Each app pairs separately. If both are installed, Android asks which one to open when a controller is plugged in.
+
 ## How it works
 The app connects to the device's own Wireless debugging and uses it to create a virtual controller called
 "Xbox Wireless Controller". The game detects it, switches to controller mode, and also accepts input from the controller plugged in over USB.
@@ -85,6 +98,7 @@ From then on, press A to start the virtual controller. It also starts after the 
 ## Changelog
 | Version | Changes |
 |---|---|
+| 1.0.40 | New second app: Auto COD USB – pairs by itself (opens the pairing window, reads the code and pairs), and turns Wireless debugging back on every time Wi-Fi connects; blue icon with a lightning bolt; wording 'Pair device with pairing code' matches Xiaomi |
 | 1.0.39 | Plugging in a USB controller starts the virtual controller automatically, even when the app is closed |
 | 1.0.38 | The 'Pairing' button opens the Wireless debugging screen directly, with the 'Pair device with pairing code' row highlighted; fix: pressing 'Pairing' a second time got stuck; 'Already paired' window before pairing again; 3D START (confirm) and SELECT (back) keys; new 3D D-pad on the app-name line; version number next to the copyright line – tap it for the changelog |
 | 1.0.37 | Whole app in Hebrew and English; D-pad language switch (up EN, down HE); new white telescopic mobile-controller icon; more ways to open the Wireless debugging screen directly |

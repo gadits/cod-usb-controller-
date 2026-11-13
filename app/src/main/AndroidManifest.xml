@@ -27,7 +27,7 @@
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
-        android:label="COD USB"
+        android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
@@ -86,6 +86,10 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Creating the virtual game controller via local ADB" />
         </service>
+
+        <receiver
+            android:name=".WifiWatch"
+            android:exported="false" />
 
         <receiver
             android:name=".BootReceiver"

@@ -117,6 +117,7 @@ class MainActivity : Activity() {
             autoStartForController()
         }
         render()
+        autoPairIfReady()
     }
 
     override fun onPause() {
@@ -188,8 +189,8 @@ class MainActivity : Activity() {
             clipChildren = false
             clipToPadding = false
             addView(TextView(this@MainActivity).apply {
-                text = "COD USB"
-                textSize = 34f
+                text = Flavor.TITLE
+                textSize = if (Flavor.AUTO) 28f else 34f
                 typeface = Ui.BLACK
                 setTextColor(Ui.INK)
                 includeFontPadding = false
@@ -277,7 +278,27 @@ class MainActivity : Activity() {
         card.addView(Ui.lightRow(this, devOn, if (devOn) L.t("אפשרויות מפתח פעילות", "Developer options are on") else L.t("אפשרויות מפתח כבויות", "Developer options are off")))
         card.addView(Ui.lightRow(this, paired, if (paired) L.t("צימוד בוצע", "Paired") else L.t("עוד לא בוצע צימוד", "Not paired yet")))
         card.addView(Ui.lightRow(this, wss, if (wss) L.t("הרשאה להדלקת ניפוי באגים: התקבלה", "Permission to turn on debugging: granted") else L.t("הרשאה להדלקת ניפוי באגים: תתקבל בצימוד", "Permission to turn on debugging: granted during pairing")))
-        if (!paired) {
+        if (Flavor.AUTO) {
+            val a11y = Flavor.a11yEnabled(this)
+            card.addView(Ui.lightRow(this, a11y, if (a11y) L.t("צימוד אוטומטי: פעיל", "Automatic pairing: on") else L.t("צימוד אוטומטי: כבוי", "Automatic pairing: off")))
+            if (!a11y) {
+                card.addView(Ui.text(
+                    this,
+                    L.t("כדי שהאפליקציה תצמד לבד, הדלק את 'Auto COD USB' בהגדרות הנגישות. אם המתג אפור (אנדרואיד 13 ומעלה): לחץ קודם 'אשר הגדרות מוגבלות' ← ⋮ למעלה ← 'אפשר הגדרות מוגבלות'.",
+                        "To let the app pair by itself, turn on 'Auto COD USB' in Accessibility. If the switch is greyed out (Android 13+): first tap 'Allow restricted settings' → ⋮ at the top → 'Allow restricted settings'.")
+                ).apply { setPadding(0, dp(6), 0, 0) })
+                if (Build.VERSION.SDK_INT >= 33) {
+                    card.addView(Ui.bumper(this, L.t("אשר הגדרות מוגבלות", "Allow restricted settings")) {
+                        open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+                    })
+                }
+            }
+            card.addView(Ui.bumper(this, if (a11y) L.t("צימוד אוטומטי: מופעל", "Automatic pairing: enabled") else L.t("הדלק צימוד אוטומטי (נגישות)", "Turn on automatic pairing (Accessibility)"), a11y) {
+                open(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                if (!a11y) toast(L.t("בחר 'Auto COD USB' והדלק", "Choose 'Auto COD USB' and turn it on"))
+            })
+        }
+        if (!paired && !Flavor.AUTO) {
             card.addView(
                 Ui.text(
                     this,
@@ -388,8 +409,25 @@ class MainActivity : Activity() {
             ) { beginPairing() }
             return
         }
+        if (Flavor.AUTO && Flavor.a11yEnabled(this)) {
+            beginPairing() // the helper does every step by itself
+            return
+        }
         PairingGuide.show(this) { beginPairing() }
     }
+
+    /** Auto app: the first time everything is ready, pair by itself without any tap. */
+    private fun autoPairIfReady() {
+        if (!Flavor.AUTO || autoPairTried || Starter.isPaired(this)) return
+        if (!Flavor.a11yEnabled(this) || !Starter.isWifiConnected(this) || !Starter.notificationsAllowed(this)) return
+        val devOn = Settings.Global.getInt(contentResolver, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) == 1
+        if (!devOn) return
+        autoPairTried = true
+        Starter.log(this, L.t("הכל מוכן – מתחיל צימוד אוטומטי", "All set – starting automatic pairing"))
+        handler.postDelayed({ if (!isFinishing) beginPairing() }, 600)
+    }
+
+    private var autoPairTried = false
 
     private fun beginPairing() {
         PairingUi.last = null

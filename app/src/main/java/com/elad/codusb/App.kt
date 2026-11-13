@@ -12,6 +12,7 @@ class App : Application() {
     override fun onCreate() {
         super.onCreate()
         L.init(this)
+        WifiWatch.register(this)
         try {
             Security.insertProviderAt(Conscrypt.newProvider(), 1)
         } catch (_: Throwable) {

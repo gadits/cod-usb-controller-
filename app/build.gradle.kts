@@ -17,6 +17,18 @@ android {
         versionName = "1.0.$runNumber"
     }
 
+    // Two apps from one code base: the regular one, and "Auto COD USB" (pairs by itself via accessibility)
+    flavorDimensions += "mode"
+    productFlavors {
+        create("standard") {
+            dimension = "mode"
+        }
+        create("auto") {
+            dimension = "mode"
+            applicationIdSuffix = ".auto"
+        }
+    }
+
     // Fixed key so every new build installs as an update over the old one
     signingConfigs {
         create("shared") {

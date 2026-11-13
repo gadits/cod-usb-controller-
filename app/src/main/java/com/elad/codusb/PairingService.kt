@@ -129,10 +129,10 @@ class PairingService : Service() {
     private fun begin() {
         running = true
         PairingUi.done = false
-        PairingUi.update(L.t("בחר בהגדרות 'צימוד מכשיר באמצעות קוד צימוד'", "In Settings choose 'Pair device with pairing code'"), PairingUi.Kind.INFO)
+        PairingUi.update(L.t("בחר בהגדרות 'צמד מכשיר באמצעות קוד צימוד'", "In Settings choose 'Pair device with pairing code'"), PairingUi.Kind.INFO)
         val n = input(
             L.t("ממתין לחלון הצימוד", "Waiting for the pairing window"),
-            L.t("בחר 'צימוד מכשיר באמצעות קוד צימוד'. התראה זו תופיע שוב כשהקוד יוצג.", "Choose 'Pair device with pairing code'. This notification pops up again when the code is shown."),
+            L.t("בחר 'צמד מכשיר באמצעות קוד צימוד'. התראה זו תופיע שוב כשהקוד יוצג.", "Choose 'Pair device with pairing code'. This notification pops up again when the code is shown."),
             false
         )
         if (Build.VERSION.SDK_INT >= 34) {
@@ -184,7 +184,7 @@ class PairingService : Service() {
                 port = pairingPort
             }
             if (port <= 0) {
-                PairingUi.update(L.t("לא זיהיתי את חלון הצימוד – ודא שפתחת 'צימוד מכשיר באמצעות קוד צימוד'", "Pairing window not found – make sure 'Pair device with pairing code' is open"), PairingUi.Kind.ERROR)
+                PairingUi.update(L.t("לא זיהיתי את חלון הצימוד – ודא שפתחת 'צמד מכשיר באמצעות קוד צימוד'", "Pairing window not found – make sure 'Pair device with pairing code' is open"), PairingUi.Kind.ERROR)
                 post(
                     input(
                         L.t("לא זיהיתי את חלון הצימוד", "Pairing window not found"),

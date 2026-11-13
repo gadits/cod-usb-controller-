@@ -36,7 +36,7 @@ object PairingGuide {
             15f, Ui.INK_SOFT
         ).apply { setPadding(0, 0, 0, Ui.dp(a, 6)) })
         card.addView(step(a, "1", L.t("במסך שייפתח, ודא ש'ניפוי באגים אלחוטי' מופעל. אם תתבקש לאשר את הרשת – סמן 'אפשר תמיד ברשת זו' ואשר.", "On the screen that opens, make sure 'Wireless debugging' is on. If asked about the network – tick 'Always allow on this network' and confirm.")))
-        card.addView(step(a, "2", L.t("בחר 'צימוד מכשיר באמצעות קוד צימוד'. יוצג חלון ובו קוד בן 6 ספרות.", "Choose 'Pair device with pairing code'. A window with a 6-digit code appears.")))
+        card.addView(step(a, "2", L.t("בחר 'צמד מכשיר באמצעות קוד צימוד'. יוצג חלון ובו קוד בן 6 ספרות.", "Choose 'Pair device with pairing code'. A window with a 6-digit code appears.")))
         card.addView(step(a, "3", L.t("בראש המסך תופיע התראה כמו זו. לחץ על 'הקלד קוד צימוד', הזן את הקוד ושלח:", "Type the code in the app's box (or in a notification like this one, at the top of the screen):")))
         card.addView(mockNotification(a), LinearLayout.LayoutParams(-1, -2).apply {
             topMargin = Ui.dp(a, 10)
