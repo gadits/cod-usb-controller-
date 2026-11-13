@@ -19,6 +19,8 @@
 3. להדליק "ניפוי באגים אלחוטי" ← "צימוד מכשיר באמצעות קוד צימוד" ← להקליד את 6 הספרות בתיבה (או "קרא את הקוד מהמסך").
 4. בשיאומי: לאשר "הפעלה אוטומטית" ולבטל את הגבלת הסוללה.
 
+חיבור שלט USB מפעיל את השלט הווירטואלי אוטומטית (בפעם הראשונה אנדרואיד שואל – לסמן "השתמש כברירת מחדל" ולאשר).
+
 מאותו רגע לוחצים A והשלט הווירטואלי עולה, וגם אחרי הדלקה של המכשיר (בזמן חיבור ל-WiFi).
 
 ## דרישות
@@ -28,6 +30,7 @@
 ## רשימת שינויים
 | גרסה | שינויים |
 |---|---|
+| 1.0.39 | חיבור שלט USB מפעיל אוטומטית את השלט הווירטואלי, גם כשהאפליקציה סגורה |
 | 1.0.38 | הכפתור 'צימוד' פותח ישירות את מסך ניפוי הבאגים האלחוטי ומסמן בו את השורה 'צימוד מכשיר באמצעות קוד צימוד'; תיקון: לחיצה חוזרת על 'צימוד' נתקעה; חלון 'השלט כבר מוצמד' לפני צימוד מחדש; כפתורי START (אישור) ו-SELECT (חזרה) תלת-ממדיים; כפתור D-PAD תלת-ממדי חדש בשורה של שם האפליקציה; מספר גרסה ליד שורת הזכויות – לחיצה עליו מציגה את רשימת השינויים |
 | 1.0.37 | כל האפליקציה בעברית ובאנגלית; כפתור החלפת שפה בצורת D-PAD (למעלה EN, למטה HE); אייקון חדש של שלט טלסקופי לבן לנייד; עוד דרכים לפתוח ישירות את מסך "ניפוי באגים אלחוטי" |
 | 1.0.36 | שיאומי: ניסיון דרכים חלופיות לפתיחת "ניפוי באגים אלחוטי" לפני מעבר לאפשרויות מפתח |
@@ -71,6 +74,8 @@ The app connects to the device's own Wireless debugging and uses it to create a 
 3. Turn on "Wireless debugging" → "Pair device with pairing code" → type the 6 digits in the box (or "Read the code from the screen").
 4. On Xiaomi: allow Autostart and remove the battery restriction.
 
+Plugging in a USB controller starts the virtual controller automatically (the first time Android asks – tick "Use by default" and confirm).
+
 From then on, press A to start the virtual controller. It also starts after the device boots (while on Wi-Fi).
 
 ## Requirements
@@ -80,6 +85,7 @@ From then on, press A to start the virtual controller. It also starts after the 
 ## Changelog
 | Version | Changes |
 |---|---|
+| 1.0.39 | Plugging in a USB controller starts the virtual controller automatically, even when the app is closed |
 | 1.0.38 | The 'Pairing' button opens the Wireless debugging screen directly, with the 'Pair device with pairing code' row highlighted; fix: pressing 'Pairing' a second time got stuck; 'Already paired' window before pairing again; 3D START (confirm) and SELECT (back) keys; new 3D D-pad on the app-name line; version number next to the copyright line – tap it for the changelog |
 | 1.0.37 | Whole app in Hebrew and English; D-pad language switch (up EN, down HE); new white telescopic mobile-controller icon; more ways to open the Wireless debugging screen directly |
 | 1.0.36 | Xiaomi: try alternative ways to open Wireless debugging before falling back to Developer options |

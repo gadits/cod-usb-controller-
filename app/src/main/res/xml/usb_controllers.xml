@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Game controllers: standard HID, and Xbox-360-style (XInput) controllers -->
+<resources>
+    <usb-device class="3" />
+    <usb-device class="255" subclass="93" protocol="1" />
+    <usb-device class="255" subclass="71" protocol="208" />
+</resources>
