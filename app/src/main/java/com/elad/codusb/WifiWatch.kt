@@ -17,7 +17,8 @@ class WifiWatch : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         if (!Starter.isPaired(ctx) || !Starter.hasSecureSettings(ctx)) return
         try {
-            if (Starter.enableWirelessDebugging(ctx)) {
+            val wasOn = android.provider.Settings.Global.getInt(ctx.contentResolver, "adb_wifi_enabled", 0) == 1
+            if (!wasOn && Starter.enableWirelessDebugging(ctx)) {
                 Starter.log(ctx, L.t("WiFi התחבר – ניפוי באגים אלחוטי הודלק מחדש", "Wi-Fi connected – Wireless debugging turned back on"))
             }
         } catch (_: Throwable) {

@@ -25,6 +25,8 @@ import android.view.accessibility.AccessibilityNodeInfo
 class PairingAccessibility : AccessibilityService() {
 
     private var lastCode: String? = null
+    private var retriedCode: String? = null
+    private var retries = 0
     private var lastWirelessClick = 0L
     private var lastPairClick = 0L
     private var lastToggleClick = 0L
@@ -69,6 +71,13 @@ class PairingAccessibility : AccessibilityService() {
     }
 
     private fun step() {
+        // a failed attempt: send the same code once more (at most 2 retries per code)
+        if (PairingUi.last?.second == PairingUi.Kind.ERROR && lastCode != null && retries < 2) {
+            retriedCode = lastCode
+            retries++
+            lastCode = null
+            PairingUi.last = null
+        }
         if (!PairingService.running) {
             lastCode = null
             scrolls = 0
@@ -92,6 +101,7 @@ class PairingAccessibility : AccessibilityService() {
             val port = texts.firstNotNullOfOrNull { ADDRESS.find(it)?.groupValues?.get(1)?.toIntOrNull() }
             if (code != null && port != null) {
                 if (code != lastCode) {
+                    if (code != retriedCode) retries = 0
                     lastCode = code
                     Log.i(TAG, "code read, port=$port")
                     Starter.log(this, L.t("הקוד נקרא אוטומטית מחלון הצימוד", "Code read automatically from the pairing window"))

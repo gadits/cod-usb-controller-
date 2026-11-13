@@ -281,22 +281,23 @@ class MainActivity : Activity() {
         if (Flavor.AUTO) {
             val a11y = Flavor.a11yEnabled(this)
             card.addView(Ui.lightRow(this, a11y, if (a11y) L.t("צימוד אוטומטי: פעיל", "Automatic pairing: on") else L.t("צימוד אוטומטי: כבוי", "Automatic pairing: off")))
-            if (!a11y) {
-                card.addView(Ui.text(
-                    this,
-                    L.t("כדי שהאפליקציה תצמד לבד, הדלק את 'Auto COD USB' בהגדרות הנגישות. אם המתג אפור (אנדרואיד 13 ומעלה): לחץ קודם 'אשר הגדרות מוגבלות' ← ⋮ למעלה ← 'אפשר הגדרות מוגבלות'.",
-                        "To let the app pair by itself, turn on 'Auto COD USB' in Accessibility. If the switch is greyed out (Android 13+): first tap 'Allow restricted settings' → ⋮ at the top → 'Allow restricted settings'.")
-                ).apply { setPadding(0, dp(6), 0, 0) })
-                if (Build.VERSION.SDK_INT >= 33) {
-                    card.addView(Ui.bumper(this, L.t("אשר הגדרות מוגבלות", "Allow restricted settings")) {
-                        open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
-                    })
-                }
-            }
             card.addView(Ui.bumper(this, if (a11y) L.t("צימוד אוטומטי: מופעל", "Automatic pairing: enabled") else L.t("הדלק צימוד אוטומטי (נגישות)", "Turn on automatic pairing (Accessibility)"), a11y) {
                 open(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                 if (!a11y) toast(L.t("בחר 'Auto COD USB' והדלק", "Choose 'Auto COD USB' and turn it on"))
             })
+            if (!a11y) {
+                card.addView(Ui.text(
+                    this,
+                    L.t("לחץ על הכפתור למעלה, בחר 'Auto COD USB' והדלק. אם המתג חסום או מופיעה הודעה 'הגדרה מוגבלת': חזור לכאן, לחץ 'אשר הגדרות מוגבלות' ← ⋮ למעלה ← 'אפשר הגדרות מוגבלות', ונסה להדליק שוב.",
+                        "Tap the button above, choose 'Auto COD USB' and turn it on. If the switch is blocked or a 'Restricted setting' message appears: come back here, tap 'Allow restricted settings' → ⋮ at the top → 'Allow restricted settings', and try again.")
+                ).apply { setPadding(0, dp(6), 0, 0) })
+                if (Build.VERSION.SDK_INT >= 33) {
+                    card.addView(Ui.bumper(this, L.t("אשר הגדרות מוגבלות", "Allow restricted settings")) {
+                        open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+                        toast(L.t("לחץ ⋮ למעלה ← 'אפשר הגדרות מוגבלות'", "Tap ⋮ at the top → 'Allow restricted settings'"))
+                    })
+                }
+            }
         }
         if (!paired && !Flavor.AUTO) {
             card.addView(

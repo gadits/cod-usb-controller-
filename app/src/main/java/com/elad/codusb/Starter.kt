@@ -329,7 +329,7 @@ object Starter {
         val ok = startHelperReliably(ctx, m)
         val base = if (ok) L.t("הכל מוכן ✓ השלט הווירטואלי פעיל.", "All set ✓ the virtual controller is on.") else L.t("הצימוד הצליח, אבל השלט הווירטואלי לא נוצר. פתח את האפליקציה לפרטים.", "Paired, but the virtual controller wasn't created. Open the app for details.")
         return if (granted) base
-        else L.t("$base\nשים לב: ההפעלה האוטומטית אחרי הדלקה לא אושרה (בשיאומי צריך להדליק 'ניפוי באגים USB (הגדרות אבטחה)' ולצמד שוב).", "$base\nNote: starting automatically after boot wasn't allowed (on Xiaomi turn on 'USB debugging (Security settings)' and pair again).")
+        else L.t("$base\nשים לב: ההפעלה האוטומטית אחרי הדלקה לא אושרה (בשיאומי: הדלק 'ניפוי באגים USB (הגדרות אבטחה)' באפשרויות מפתח ולחץ A – אין צורך לצמד שוב).", "$base\nNote: starting automatically after boot wasn't allowed (on Xiaomi: turn on 'USB debugging (Security settings)' in Developer options and press A – no need to pair again).")
     }
 
     /** Full automatic start: Wi-Fi, wireless debugging, connect, create controller. */
