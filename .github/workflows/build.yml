@@ -3,6 +3,8 @@ name: Build, test on emulator, publish
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '.github/workflows/cleanup.yml'
   workflow_dispatch:
 
 permissions:
