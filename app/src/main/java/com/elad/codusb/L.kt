@@ -10,8 +10,8 @@ object L {
 
     fun init(ctx: Context) {
         appCtx = ctx.applicationContext
-        en = prefs(ctx).getString("lang", null)?.let { it == "en" }
-            ?: !java.util.Locale.getDefault().language.let { it == "iw" || it == "he" }
+        // English by default; the D-pad choice (if any) is kept
+        en = prefs(ctx).getString("lang", null)?.let { it == "en" } ?: true
     }
 
     private fun prefs(ctx: Context) = ctx.applicationContext.getSharedPreferences("lang", Context.MODE_PRIVATE)

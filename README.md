@@ -36,6 +36,7 @@
 ## רשימת שינויים
 | גרסה | שינויים |
 |---|---|
+| 1.0.42 | האפליקציה נפתחת באנגלית כברירת מחדל (אפשר לעבור לעברית ב-D-PAD, והבחירה נשמרת) |
 | 1.0.41 | Auto: סדר נכון להדלקת הנגישות והגדרות מוגבלות; ניסיון חוזר אוטומטי אם צימוד נכשל; בשיאומי אין צורך לצמד שוב אחרי הדלקת 'ניפוי באגים USB (הגדרות אבטחה)' – מספיק ללחוץ A |
 | 1.0.40 | אפליקציה חדשה נוספת: Auto COD USB – מצמדת לבד (פותחת את חלון הצימוד, קוראת את הקוד ומצמדת), ומדליקה מחדש את ניפוי הבאגים האלחוטי בכל חיבור WiFi; אייקון כחול עם ברק; הנוסח 'צמד מכשיר באמצעות קוד צימוד' כמו בשיאומי |
 | 1.0.39 | חיבור שלט USB מפעיל אוטומטית את השלט הווירטואלי, גם כשהאפליקציה סגורה |
@@ -99,6 +100,7 @@ From then on, press A to start the virtual controller. It also starts after the 
 ## Changelog
 | Version | Changes |
 |---|---|
+| 1.0.42 | The app opens in English by default (switch to Hebrew with the D-pad; the choice is kept) |
 | 1.0.41 | Auto: correct order for turning on accessibility and restricted settings; automatic retry if a pairing attempt fails; on Xiaomi no need to pair again after turning on 'USB debugging (Security settings)' – just press A |
 | 1.0.40 | New second app: Auto COD USB – pairs by itself (opens the pairing window, reads the code and pairs), and turns Wireless debugging back on every time Wi-Fi connects; blue icon with a lightning bolt; wording 'Pair device with pairing code' matches Xiaomi |
 | 1.0.39 | Plugging in a USB controller starts the virtual controller automatically, even when the app is closed |

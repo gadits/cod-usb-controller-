@@ -10,6 +10,7 @@ import android.widget.TextView
 /** Changes in every version — the same list as on the GitHub page. */
 object Changelog {
     private val ENTRIES = listOf(
+        Triple("1.0.42", "האפליקציה נפתחת באנגלית כברירת מחדל (אפשר לעבור לעברית ב-D-PAD, והבחירה נשמרת)", "The app opens in English by default (switch to Hebrew with the D-pad; the choice is kept)"),
         Triple("1.0.41", "Auto: סדר נכון להדלקת הנגישות והגדרות מוגבלות; ניסיון חוזר אוטומטי אם צימוד נכשל; בשיאומי אין צורך לצמד שוב אחרי הדלקת 'ניפוי באגים USB (הגדרות אבטחה)' – מספיק ללחוץ A", "Auto: correct order for turning on accessibility and restricted settings; automatic retry if a pairing attempt fails; on Xiaomi no need to pair again after turning on 'USB debugging (Security settings)' – just press A"),
         Triple("1.0.40", "אפליקציה חדשה נוספת: Auto COD USB – מצמדת לבד (פותחת את חלון הצימוד, קוראת את הקוד ומצמדת), ומדליקה מחדש את ניפוי הבאגים האלחוטי בכל חיבור WiFi; אייקון כחול עם ברק; הנוסח 'צמד מכשיר באמצעות קוד צימוד' כמו בשיאומי", "New second app: Auto COD USB – pairs by itself (opens the pairing window, reads the code and pairs), and turns Wireless debugging back on every time Wi-Fi connects; blue icon with a lightning bolt; wording 'Pair device with pairing code' matches Xiaomi"),
         Triple("1.0.39", "חיבור שלט USB מפעיל אוטומטית את השלט הווירטואלי, גם כשהאפליקציה סגורה", "Plugging in a USB controller starts the virtual controller automatically, even when the app is closed"),
