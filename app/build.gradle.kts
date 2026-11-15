@@ -17,15 +17,11 @@ android {
         versionName = "1.0.$runNumber"
     }
 
-    // Two apps from one code base: the regular one, and "Auto COD USB" (pairs by itself via accessibility)
+    // Single flavor (keeps the APK output path stable)
     flavorDimensions += "mode"
     productFlavors {
         create("standard") {
             dimension = "mode"
-        }
-        create("auto") {
-            dimension = "mode"
-            applicationIdSuffix = ".auto"
         }
     }
 
