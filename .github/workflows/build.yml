@@ -110,14 +110,15 @@ jobs:
         with:
           name: apk
 
-      - name: Publish release (stable download link)
+      - name: Publish release (one release per version, so GitHub keeps counting downloads)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # the old single "latest" release was recreated every build, which reset its download counter
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest CodUsbController.apk AutoCodUsb.apk \
-            --title "גרסה 1.0.${{ github.run_number }}" \
-            --notes "CodUsbController.apk – הרגילה | AutoCodUsb.apk – Auto COD USB" \
+          gh release create "v1.0.${{ github.run_number }}" CodUsbController.apk AutoCodUsb.apk \
+            --title "גרסה 1.0.${{ github.run_number }} / Version 1.0.${{ github.run_number }}" \
+            --notes "CodUsbController.apk – COD USB | AutoCodUsb.apk – Auto COD USB" \
             --latest
 
       - name: Update second download link

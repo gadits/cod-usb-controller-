@@ -1,5 +1,7 @@
 # COD USB — שלט USB ל-Call of Duty Mobile
 
+[![Downloads](https://img.shields.io/github/downloads/gadits/cod-usb-controller-/total?label=%D7%94%D7%95%D7%A8%D7%93%D7%95%D7%AA%20%2F%20downloads)](https://github.com/gadits/cod-usb-controller-/releases)
+
 **עברית** · [English](#english)
 
 אפליקציית אנדרואיד שמאפשרת לשחק COD Mobile עם כל שלט בחיבור USB-C, בלי Shizuku ובלי Termux.
@@ -7,10 +9,10 @@
 © כל הזכויות שמורות לגדיץ
 
 ## הורדה
-[CodUsbController.apk](https://raw.githubusercontent.com/gadits/cod-usb-controller-/download/CodUsbController.apk) — הקישור הזה תמיד מוביל לגרסה האחרונה ([דף הגרסאות](https://github.com/gadits/cod-usb-controller-/releases/latest))
+[CodUsbController.apk](https://github.com/gadits/cod-usb-controller-/releases/latest/download/CodUsbController.apk) — הקישור הזה תמיד מוביל לגרסה האחרונה ([דף הגרסאות](https://github.com/gadits/cod-usb-controller-/releases/latest))
 
 ### Auto COD USB – הכל אוטומטי
-[AutoCodUsb.apk](https://raw.githubusercontent.com/gadits/cod-usb-controller-/download/AutoCodUsb.apk) — אפליקציה נפרדת (אפשר להתקין לצד הרגילה) שמצמדת לבד בעזרת שירות נגישות: פותחת את חלון הצימוד, קוראת את הקוד ומצמדת, בלי הקלדה. בנוסף מדליקה מחדש את "ניפוי באגים אלחוטי" בכל חיבור WiFi.
+[AutoCodUsb.apk](https://github.com/gadits/cod-usb-controller-/releases/latest/download/AutoCodUsb.apk) — אפליקציה נפרדת (אפשר להתקין לצד הרגילה) שמצמדת לבד בעזרת שירות נגישות: פותחת את חלון הצימוד, קוראת את הקוד ומצמדת, בלי הקלדה. בנוסף מדליקה מחדש את "ניפוי באגים אלחוטי" בכל חיבור WiFi.
 - Play Protect עלול להזהיר או לחסום בהתקנה (בגלל הנגישות). אם אין אפשרות "התקן בכל זאת": בחנות Play ← Play Protect ← הגדרות ← לכבות זמנית את "סריקת אפליקציות", להתקין, ולהדליק בחזרה.
 - להדליק את Auto COD USB בהגדרות הנגישות. אם המתג חסום או מופיעה הודעה "הגדרה מוגבלת": מידע על האפליקציה ← ⋮ ← "אפשר הגדרות מוגבלות", ואז להדליק שוב.
 - לכל אפליקציה צימוד משלה. אם שתיהן מותקנות, בחיבור שלט אנדרואיד ישאל איזו לפתוח.
@@ -71,10 +73,10 @@ An Android app that lets you play COD Mobile with any USB-C controller, without 
 © All rights reserved to Gadits
 
 ## Download
-[CodUsbController.apk](https://raw.githubusercontent.com/gadits/cod-usb-controller-/download/CodUsbController.apk) — this link always points to the latest version ([releases page](https://github.com/gadits/cod-usb-controller-/releases/latest))
+[CodUsbController.apk](https://github.com/gadits/cod-usb-controller-/releases/latest/download/CodUsbController.apk) — this link always points to the latest version ([releases page](https://github.com/gadits/cod-usb-controller-/releases/latest))
 
 ### Auto COD USB – fully automatic
-[AutoCodUsb.apk](https://raw.githubusercontent.com/gadits/cod-usb-controller-/download/AutoCodUsb.apk) — a separate app (can be installed next to the regular one) that pairs by itself using an accessibility service: it opens the pairing window, reads the code and pairs, with no typing. It also turns Wireless debugging back on every time Wi-Fi connects.
+[AutoCodUsb.apk](https://github.com/gadits/cod-usb-controller-/releases/latest/download/AutoCodUsb.apk) — a separate app (can be installed next to the regular one) that pairs by itself using an accessibility service: it opens the pairing window, reads the code and pairs, with no typing. It also turns Wireless debugging back on every time Wi-Fi connects.
 - Play Protect may warn about or block the install (because of the accessibility service). If there's no "Install anyway": Play Store → Play Protect → settings → temporarily turn off "Scan apps", install, then turn it back on.
 - Turn on Auto COD USB in Accessibility settings. If the switch is blocked or a "Restricted setting" message appears: App info → ⋮ → "Allow restricted settings", then turn it on again.
 - Each app pairs separately. If both are installed, Android asks which one to open when a controller is plugged in.
