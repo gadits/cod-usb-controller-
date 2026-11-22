@@ -378,4 +378,41 @@ object Starter {
             L.t("שגיאה: ${t.message}", "Error: ${t.message}")
         }
     }
+
+    /**
+     * Turns off the phone's OTG switch (Xiaomi HyperOS: Settings → Additional settings → OTG, and similar on other brands).
+     * The switch has no public API, so this finds every system setting whose name contains "otg" and is on, and turns it off.
+     */
+    fun otgOff(ctx: Context): String {
+        enableWirelessDebugging(ctx)
+        val m = connect(ctx, 20_000)
+            ?: return L.t("לא הצלחתי להתחבר. ודא ש'ניפוי באגים אלחוטי' דולק.", "Couldn't connect. Make sure 'Wireless debugging' is on.")
+        return try {
+            val list = shell(m, "for n in global system secure; do settings list \$n 2>/dev/null | grep -i otg | sed \"s/^/\$n:/\"; done")
+            val props = shell(m, "getprop | grep -i otg | head -5").trim()
+            log(ctx, "OTG settings: ${list.trim().ifEmpty { "-" }} | props: ${props.ifEmpty { "-" }}")
+            val on = list.lines().mapNotNull { line ->
+                val ns = line.substringBefore(':', "")
+                val kv = line.substringAfter(':', "")
+                val key = kv.substringBefore('=', "").trim()
+                val value = kv.substringAfter('=', "").trim()
+                if (ns.isEmpty() || key.isEmpty() || key.contains(' ')) null
+                else if (value == "1" || value.equals("true", true)) Triple(ns, key, if (value == "1") "0" else "false")
+                else null
+            }
+            val found = list.lines().any { it.contains('=') }
+            when {
+                on.isNotEmpty() -> {
+                    for ((ns, key, off) in on) shell(m, "settings put $ns $key $off")
+                    log(ctx, "OTG off: " + on.joinToString { "${it.first}/${it.second}" })
+                    L.t("OTG כובה ✓", "OTG turned off ✓")
+                }
+                found -> L.t("OTG כבר כבוי.", "OTG is already off.")
+                else -> L.t("לא נמצא מתג OTG במכשיר הזה – בחלק מהמכשירים OTG תמיד פעיל ואי אפשר לכבות אותו.",
+                    "No OTG switch found on this device – on some devices OTG is always on and can't be turned off.")
+            }
+        } catch (t: Throwable) {
+            L.t("שגיאה: ${t.message}", "Error: ${t.message}")
+        }
+    }
 }

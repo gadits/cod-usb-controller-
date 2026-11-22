@@ -32,6 +32,7 @@
 ## רשימת שינויים
 | גרסה | שינויים |
 |---|---|
+| 1.0.45 | כפתור 'כבה OTG' שמכבה את מתג ה-OTG של הטלפון (בשיאומי: הגדרות נוספות ← OTG) |
 | 1.0.44 | שיפורים פנימיים |
 | 1.0.42 | האפליקציה נפתחת באנגלית כברירת מחדל (אפשר לעבור לעברית ב-D-PAD, והבחירה נשמרת) |
 | 1.0.41 | בשיאומי אין צורך לצמד שוב אחרי הדלקת 'ניפוי באגים USB (הגדרות אבטחה)' – מספיק ללחוץ A |
@@ -91,6 +92,7 @@ From then on, press A to start the virtual controller. It also starts after the 
 ## Changelog
 | Version | Changes |
 |---|---|
+| 1.0.45 | 'Turn off OTG' button that switches off the phone's OTG setting (Xiaomi: Additional settings → OTG) |
 | 1.0.44 | Internal improvements |
 | 1.0.42 | The app opens in English by default (switch to Hebrew with the D-pad; the choice is kept) |
 | 1.0.41 | On Xiaomi no need to pair again after turning on 'USB debugging (Security settings)' – just press A |

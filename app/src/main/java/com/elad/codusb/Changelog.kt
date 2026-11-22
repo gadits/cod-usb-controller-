@@ -10,6 +10,7 @@ import android.widget.TextView
 /** Changes in every version — the same list as on the GitHub page. */
 object Changelog {
     private val ENTRIES = listOf(
+        Triple("1.0.45", "כפתור 'כבה OTG' שמכבה את מתג ה-OTG של הטלפון (בשיאומי: הגדרות נוספות ← OTG)", "'Turn off OTG' button that switches off the phone's OTG setting (Xiaomi: Additional settings → OTG)"),
         Triple("1.0.44", "שיפורים פנימיים", "Internal improvements"),
         Triple("1.0.42", "האפליקציה נפתחת באנגלית כברירת מחדל (אפשר לעבור לעברית ב-D-PAD, והבחירה נשמרת)", "The app opens in English by default (switch to Hebrew with the D-pad; the choice is kept)"),
         Triple("1.0.41", "בשיאומי אין צורך לצמד שוב אחרי הדלקת 'ניפוי באגים USB (הגדרות אבטחה)' – מספיק ללחוץ A", "On Xiaomi no need to pair again after turning on 'USB debugging (Security settings)' – just press A"),

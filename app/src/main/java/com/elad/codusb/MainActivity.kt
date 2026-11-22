@@ -265,6 +265,13 @@ class MainActivity : Activity() {
             Starter.setAutoStart(this, !auto)
             render()
         })
+        card.addView(Ui.bumper(this, L.t("כבה OTG", "Turn off OTG")) {
+            toast(L.t("מכבה OTG...", "Turning off OTG..."))
+            Thread {
+                val r = Starter.otgOff(applicationContext)
+                runOnUiThread { toast(r); render() }
+            }.start()
+        })
         return card
     }
 
