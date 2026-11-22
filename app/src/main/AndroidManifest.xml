@@ -79,6 +79,15 @@
             android:foregroundServiceType="mediaProjection" />
 
         <service
+            android:name=".OtgWatchService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Turns USB OTG off while the screen is off to save battery" />
+        </service>
+
+        <service
             android:name=".StartService"
             android:exported="false"
             android:foregroundServiceType="specialUse">

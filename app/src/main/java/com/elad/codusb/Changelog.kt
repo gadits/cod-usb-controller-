@@ -10,6 +10,7 @@ import android.widget.TextView
 /** Changes in every version — the same list as on the GitHub page. */
 object Changelog {
     private val ENTRIES = listOf(
+        Triple("1.0.46", "חיסכון בסוללה (שיאומי): כשהמסך נכבה עם שלט מחובר, OTG נכבה והטלפון מפסיק להזין את השלט; כשהמסך נדלק OTG חוזר", "Battery saver (Xiaomi): when the screen turns off with a controller plugged in, OTG turns off so the phone stops powering it; OTG comes back when the screen turns on"),
         Triple("1.0.45", "כפתור 'כבה OTG' שמכבה את מתג ה-OTG של הטלפון (בשיאומי: הגדרות נוספות ← OTG)", "'Turn off OTG' button that switches off the phone's OTG setting (Xiaomi: Additional settings → OTG)"),
         Triple("1.0.44", "שיפורים פנימיים", "Internal improvements"),
         Triple("1.0.42", "האפליקציה נפתחת באנגלית כברירת מחדל (אפשר לעבור לעברית ב-D-PAD, והבחירה נשמרת)", "The app opens in English by default (switch to Hebrew with the D-pad; the choice is kept)"),

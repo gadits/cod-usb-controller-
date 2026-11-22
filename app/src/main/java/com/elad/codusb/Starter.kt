@@ -380,31 +380,49 @@ object Starter {
     }
 
     /**
-     * Turns off the phone's OTG switch (Xiaomi HyperOS: Settings → Additional settings → OTG, and similar on other brands).
-     * The switch has no public API, so this finds every system setting whose name contains "otg" and is on, and turns it off.
+     * Turns the phone's OTG switch off or back on (Xiaomi HyperOS: Settings → Additional settings → OTG).
+     * The switch has no public API: turning off finds every system setting whose name contains "otg" and is on,
+     * turns it off and remembers it; turning on restores only the settings that were turned off here.
      */
-    fun otgOff(ctx: Context): String {
+    fun otgSet(ctx: Context, on: Boolean, remember: Boolean = true): String {
+        if (on && prefs(ctx).getString("otg_keys", "").isNullOrEmpty()) return L.t("OTG לא כובה על ידי האפליקציה.", "OTG wasn't turned off by the app.")
         enableWirelessDebugging(ctx)
         val m = connect(ctx, 20_000)
             ?: return L.t("לא הצלחתי להתחבר. ודא ש'ניפוי באגים אלחוטי' דולק.", "Couldn't connect. Make sure 'Wireless debugging' is on.")
         return try {
+            if (on) {
+                val saved = prefs(ctx).getString("otg_keys", "")!!.split('\n').filter { it.isNotBlank() }
+                for (line in saved) {
+                    val (ns, key, _, onValue) = line.split('|')
+                    shell(m, "settings put $ns $key $onValue")
+                }
+                prefs(ctx).edit().remove("otg_keys").apply()
+                log(ctx, "OTG on: " + saved.joinToString { it.substringBeforeLast('|').substringBeforeLast('|') })
+                return L.t("OTG הודלק ✓", "OTG turned on ✓")
+            }
             val list = shell(m, "for n in global system secure; do settings list \$n 2>/dev/null | grep -i otg | sed \"s/^/\$n:/\"; done")
             val props = shell(m, "getprop | grep -i otg | head -5").trim()
             log(ctx, "OTG settings: ${list.trim().ifEmpty { "-" }} | props: ${props.ifEmpty { "-" }}")
-            val on = list.lines().mapNotNull { line ->
+            val toOff = list.lines().mapNotNull { line ->
                 val ns = line.substringBefore(':', "")
                 val kv = line.substringAfter(':', "")
                 val key = kv.substringBefore('=', "").trim()
                 val value = kv.substringAfter('=', "").trim()
-                if (ns.isEmpty() || key.isEmpty() || key.contains(' ')) null
-                else if (value == "1" || value.equals("true", true)) Triple(ns, key, if (value == "1") "0" else "false")
+                if (ns.isEmpty() || key.isEmpty() || key.contains(' ') || key.contains('|')) null
+                else if (value == "1") listOf(ns, key, "0", "1")
+                else if (value.equals("true", true)) listOf(ns, key, "false", value)
                 else null
             }
             val found = list.lines().any { it.contains('=') }
             when {
-                on.isNotEmpty() -> {
-                    for ((ns, key, off) in on) shell(m, "settings put $ns $key $off")
-                    log(ctx, "OTG off: " + on.joinToString { "${it.first}/${it.second}" })
+                toOff.isNotEmpty() -> {
+                    for (k in toOff) shell(m, "settings put ${k[0]} ${k[1]} ${k[2]}")
+                    if (remember) {
+                    val keep = (prefs(ctx).getString("otg_keys", "")!!.split('\n') + toOff.map { it.joinToString("|") })
+                        .filter { it.isNotBlank() }.distinct().joinToString("\n")
+                    prefs(ctx).edit().putString("otg_keys", keep).apply()
+                    }
+                    log(ctx, "OTG off: " + toOff.joinToString { "${it[0]}/${it[1]}" })
                     L.t("OTG כובה ✓", "OTG turned off ✓")
                 }
                 found -> L.t("OTG כבר כבוי.", "OTG is already off.")
@@ -414,5 +432,15 @@ object Starter {
         } catch (t: Throwable) {
             L.t("שגיאה: ${t.message}", "Error: ${t.message}")
         }
+    }
+
+    fun otgOff(ctx: Context): String = otgSet(ctx, false, remember = false)
+
+    /** "Save battery": turn OTG off while the screen is off (Xiaomi). */
+    fun otgSaver(ctx: Context): Boolean = prefs(ctx).getBoolean("otg_saver", false)
+    fun setOtgSaver(ctx: Context, on: Boolean) {
+        prefs(ctx).edit().putBoolean("otg_saver", on).apply()
+        val i = android.content.Intent(ctx, OtgWatchService::class.java)
+        if (on) ctx.startForegroundService(i) else ctx.stopService(i)
     }
 }

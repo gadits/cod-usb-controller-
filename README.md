@@ -32,6 +32,7 @@
 ## רשימת שינויים
 | גרסה | שינויים |
 |---|---|
+| 1.0.46 | חיסכון בסוללה (שיאומי): כשהמסך נכבה עם שלט מחובר, OTG נכבה והטלפון מפסיק להזין את השלט; כשהמסך נדלק OTG חוזר |
 | 1.0.45 | כפתור 'כבה OTG' שמכבה את מתג ה-OTG של הטלפון (בשיאומי: הגדרות נוספות ← OTG) |
 | 1.0.44 | שיפורים פנימיים |
 | 1.0.42 | האפליקציה נפתחת באנגלית כברירת מחדל (אפשר לעבור לעברית ב-D-PAD, והבחירה נשמרת) |
@@ -92,6 +93,7 @@ From then on, press A to start the virtual controller. It also starts after the 
 ## Changelog
 | Version | Changes |
 |---|---|
+| 1.0.46 | Battery saver (Xiaomi): when the screen turns off with a controller plugged in, OTG turns off so the phone stops powering it; OTG comes back when the screen turns on |
 | 1.0.45 | 'Turn off OTG' button that switches off the phone's OTG setting (Xiaomi: Additional settings → OTG) |
 | 1.0.44 | Internal improvements |
 | 1.0.42 | The app opens in English by default (switch to Hebrew with the D-pad; the choice is kept) |

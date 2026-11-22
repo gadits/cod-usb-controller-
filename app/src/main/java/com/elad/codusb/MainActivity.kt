@@ -109,6 +109,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        if (Starter.otgSaver(this)) try { startForegroundService(Intent(this, OtgWatchService::class.java)) } catch (_: Throwable) {}
         registerReceiver(doneReceiver, IntentFilter(StartService.ACTION_DONE), Context.RECEIVER_NOT_EXPORTED)
         getSystemService(InputManager::class.java).registerInputDeviceListener(deviceListener, handler)
         logDevicesIfChanged()
@@ -265,6 +266,17 @@ class MainActivity : Activity() {
             Starter.setAutoStart(this, !auto)
             render()
         })
+        if (Starter.isXiaomi()) {
+            val saver = Starter.otgSaver(this)
+            card.addView(Ui.bumper(this,
+                if (saver) L.t("חיסכון בסוללה: OTG נכבה כשהמסך כבוי", "Battery saver: OTG off while screen is off")
+                else L.t("חיסכון בסוללה: כבוי", "Battery saver: off"), saver) {
+                Starter.setOtgSaver(this, !saver)
+                if (!saver) toast(L.t("כשהמסך ייכבה עם שלט מחובר, OTG ייכבה. כשהמסך יידלק – OTG יחזור.",
+                    "When the screen turns off with a controller plugged in, OTG turns off. It comes back when the screen turns on."))
+                render()
+            })
+        }
         card.addView(Ui.bumper(this, L.t("כבה OTG", "Turn off OTG")) {
             toast(L.t("מכבה OTG...", "Turning off OTG..."))
             Thread {

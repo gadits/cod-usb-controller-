@@ -6,6 +6,9 @@ import android.content.Intent
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        if (Starter.otgSaver(context)) {
+            try { context.startForegroundService(Intent(context, OtgWatchService::class.java)) } catch (_: Throwable) {}
+        }
         if (!Starter.isPaired(context) || !Starter.autoStart(context)) return
         Starter.log(context, L.t("המכשיר הודלק – מפעיל אוטומטית", "Device started – starting automatically"))
         try {
